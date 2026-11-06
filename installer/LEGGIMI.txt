@@ -1,0 +1,57 @@
+DETTAMI - scrivi con la voce in qualsiasi programma
+=====================================================
+
+Parli, e il testo compare già pulito (senza "ehm", con la punteggiatura giusta)
+in Word, Outlook, WhatsApp, browser, gestionali... ovunque ci sia un cursore.
+
+
+INSTALLAZIONE (2 minuti, non servono permessi di amministratore)
+----------------------------------------------------------------
+1. Tasto destro sul file zip > "Estrai tutto..." > Estrai
+2. Nella cartella estratta, doppio clic su  Installa.bat
+   Se Windows mostra un avviso: "Ulteriori informazioni" > "Esegui comunque"
+   (oppure "Esegui").
+3. Si apre una finestra per la chiave Groq:
+   clicca il link, registrati gratis, premi "Create API Key",
+   copia la chiave, incollala nella finestra e premi "Verifica e salva".
+
+Fatto. Dopo l'installazione puoi cancellare lo zip e la cartella estratta.
+
+
+COME SI USA
+-----------
+- Tieni premuto CTRL DESTRO, parla, rilascia
+    -> il testo appare dove c'è il cursore
+- Doppio tocco di CTRL DESTRO -> mani libere (un altro tocco per finire)
+- Premi SHIFT mentre parli    -> il testo viene tradotto (inglese di default)
+- ESC mentre parli            -> annulla
+
+Mentre detti compare una pillola in basso al centro dello schermo:
+  rossa = ti ascolta   arancione = sta scrivendo   verde = testo inserito
+Sulla pillola verde c'è il pulsante "Copia": copia il testo appena dettato
+per incollarlo anche da un'altra parte (Ctrl+V).
+
+DASHBOARD: doppio clic sull'icona "Dettami" sul Desktop.
+Statistiche, cronologia, dizionario, impostazioni e quota Groq rimasta.
+
+
+È GRATIS
+--------
+Ognuno usa la propria chiave Groq gratuita, senza carta di credito.
+Non condividere la tua chiave: le quote gratuite sono per account.
+
+
+AGGIORNARE
+----------
+Avevi la vecchia "Dettatura" (fino alla 1.2)? Installa Dettami come sopra:
+chiave, impostazioni, dizionario e cronologia vengono spostati da soli
+e la vecchia versione viene tolta.
+Dalla versione 1.3 Dettami si aggiorna da sola (quando non stai dettando).
+Per le versioni precedenti, o per reinstallare:
+Fai doppio clic su Installa.bat della nuova versione:
+impostazioni, chiave e cronologia restano.
+
+
+DISINSTALLARE
+-------------
+Impostazioni di Windows > App > App installate > Dettami > Disinstalla.

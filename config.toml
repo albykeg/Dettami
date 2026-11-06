@@ -1,0 +1,122 @@
+# ==============================================================
+#  DETTAMI — impostazioni
+#  Dopo una modifica: icona nella barra → "Ricarica impostazioni"
+# ==============================================================
+
+[tasti]
+# Tasto da TENERE PREMUTO mentre parli.
+# Esempi validi: "ctrl_r" (Ctrl destro), "alt_gr", "caps_lock", "insert",
+#                "menu", "pause", "scroll_lock", "f8", "f9" ... "f24"
+dettatura = "ctrl_r"
+
+# Doppio tocco veloce del tasto = modalità mani libere
+# (parli quanto vuoi, un altro tocco per finire)
+doppio_tocco_mani_libere = true
+
+# Se lo premi mentre registri, il testo viene TRADOTTO (lingua scelta dal menu)
+modificatore_traduzione = "shift"
+
+# Annulla la registrazione in corso
+annulla = "esc"
+
+# Tempi in millisecondi (di solito non serve toccarli)
+tenuta_minima_ms = 300
+finestra_doppio_tocco_ms = 450
+
+
+[api]
+# Groq è velocissimo ed economico. Funziona anche con OpenAI o un server locale
+# compatibile (es. https://api.openai.com/v1) cambiando qui e i modelli sotto.
+base_url = "https://api.groq.com/openai/v1"
+
+
+[trascrizione]
+# Provati in ordine, ognuno con la sua quota gratuita: se il primo la finisce si passa al secondo
+modelli = ["whisper-large-v3-turbo", "whisper-large-v3"]
+lingua = "it"                        # "auto" = riconosce la lingua da sola
+# Frasi da scartare se Whisper le "inventa" (le più comuni sono già gestite)
+frasi_da_ignorare = []
+
+
+[ai]
+attiva = true
+# Quanto riscrivere: "fedele" (solo pulizia), "chiara" (riformula le frasi poco chiare), "ottimizzata"
+riscrittura = "chiara"
+# Ragionamento del modello: vuoto = automatico ("low", "medium" per Ottimizzata). Valori: "low", "medium", "high"
+ragionamento = ""
+# Provati in ordine. Ogni modello ha la sua quota gratuita giornaliera separata:
+# quando uno la finisce, l'app passa da sola al successivo (e torna al primo quando si libera).
+modelli = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
+# Sotto questo numero di parole il testo non passa dall'AI (più veloce per "ok", "sì grazie")
+parole_minime = 3
+lingua_traduzione = "inglese"
+lingue_traduzione = ["inglese", "spagnolo", "francese", "tedesco", "portoghese", "russo", "arabo", "cinese"]
+
+
+[aggiornamenti]
+# Controlla le nuove versioni su GitHub (ogni ore_tra_controlli ore). Ogni aggiornamento è firmato.
+controlla = true
+# Installa da solo gli aggiornamenti quando non stai dettando
+automatici = true
+ore_tra_controlli = 6
+
+
+[inserimento]
+# "incolla" = veloce, funziona quasi ovunque
+# "digita"  = scrive carattere per carattere, per i campi che bloccano l'incolla
+metodo = "incolla"
+spazio_finale = true          # aggiunge uno spazio dopo, così due dettature non si attaccano
+ripristina_appunti = true     # dopo l'incolla rimette negli appunti quello che c'era prima
+solo_stessa_finestra = true   # se cambi finestra mentre elabora, mette il testo negli appunti invece di incollarlo nel posto sbagliato
+
+
+[audio]
+microfono = ""                # vuoto = microfono predefinito di Windows; oppure parte del nome, es. "Headset" o "Realtek"
+microfono_sempre_aperto = false   # true = zero ritardo all'avvio, ma Windows mostra sempre l'icona del microfono attivo
+coda_ms = 150                 # continua a registrare un attimo dopo il rilascio, per non tagliare l'ultima parola
+soglia_silenzio = 200         # alzala se registra rumore di fondo, abbassala se non ti sente (vedi prova.bat)
+durata_massima_min = 15
+suoni = true
+
+
+[indicatore]
+attivo = true
+posizione = "basso"          # "basso" o "alto"
+pulsante_copia = true        # dopo ogni dettatura la pillola mostra il pulsante "Copia"
+secondi_copia = 5            # quanto resta visibile (col mouse sopra non sparisce)
+
+
+[personale]
+# Parole che vuoi sempre scritte così: nomi di persone, clienti, aziende, prodotti, termini tecnici.
+# Esempio: dizionario = ["Mario Rossi", "Acme S.r.l.", "WhatsApp", "PowerPoint"]
+dizionario = ["WhatsApp", "PowerPoint", "Excel", "ChatGPT", "Claude"]
+
+[personale.scorciatoie]
+# Se dici la frase a sinistra, viene inserito il testo a destra. Togli il # per attivarle.
+# "la mia mail" = "nome@esempio.it"
+# "il mio numero" = "+39 333 000 0000"
+# "firma lavoro" = "Nome Cognome — ruolo"
+
+
+[stili]
+# Lo stile si sceglie in base al programma o al titolo della finestra in cui stai scrivendo.
+# Parole cercate (in minuscolo). Vince il primo che corrisponde, altrimenti "normale".
+chat    = ["whatsapp", "telegram", "messenger", "instagram", "slack", "discord", "teams", "signal"]
+email   = ["outlook", "thunderbird", "gmail", "posta in arrivo", "- posta"]
+prompt  = ["claude", "chatgpt", "gemini", "perplexity", "copilot", "grok", "mistral"]
+tecnico = ["code.exe", "cursor", "windowsterminal", "powershell", "cmd.exe", "notepad++", "pycharm", "sublime"]
+
+
+[istruzioni_stile]
+normale = "Testo pulito, ben punteggiato e scorrevole."
+chat = """È un messaggio di chat: tono naturale e colloquiale come l'ha detto l'utente, frasi brevi.
+Niente elenchi puntati se non richiesti, nessun saluto o firma aggiunti.
+Se il messaggio è breve (una frase), non mettere il punto finale."""
+email = """È un'email: paragrafi chiari e punteggiatura curata.
+Se l'utente detta il saluto iniziale e la chiusura, mettili su righe separate.
+Non aggiungere saluti, oggetto o firma che l'utente non ha detto."""
+prompt = """È un messaggio per un assistente AI: rendilo chiaro e ordinato.
+Se l'utente elenca requisiti, vincoli o passaggi, usa un elenco puntato e mettili in ordine logico.
+Non togliere nessun dettaglio tecnico o vincolo che ha detto."""
+tecnico = """Contesto tecnico/programmazione: mantieni esatti nomi di file, comandi, variabili e termini tecnici in inglese.
+Non tradurre i termini tecnici."""

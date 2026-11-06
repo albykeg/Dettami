@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dettami</title>
+<style>
+:root {
+  --carta: #EDF0F4;
+  --foglio: #FFFFFF;
+  --inchiostro: #1B2333;
+  --grafite: #5D6779;
+  --filo: #D8DEE7;
+  --rec: #D62F45;
+  --rec-tenue: rgba(214, 47, 69, .10);
+  --ok: #1E9E5A;
+  --attesa: #C77C02;
+  --barra: #9AA6B8;
+  --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --titoli: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --scritto: "Sitka Text", "Sitka Small", Georgia, "Times New Roman", serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --carta: #151A22; --foglio: #1C232E; --inchiostro: #E6EAF1; --grafite: #98A2B3;
+    --filo: #2B3442; --rec: #FF5D70; --rec-tenue: rgba(255, 93, 112, .14);
+    --ok: #3DD68C; --attesa: #F5B33D; --barra: #4E5A6D; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--carta); color: var(--inchiostro);
+  font: 15px/1.5 var(--ui); font-variant-numeric: tabular-nums;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--rec); outline-offset: 2px; border-radius: 4px; }
+[hidden] { display: none !important; }
+
+.app {
+  display: grid; grid-template-columns: 228px 1fr; min-height: 100%;
+  background: linear-gradient(var(--filo), var(--filo)) 227px 0 / 1px 100% no-repeat;
+}
+
+/* ---------- barra laterale ---------- */
+.lato {
+  position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+  padding: 26px 18px 20px;
+}
+.marchio { display: flex; align-items: center; gap: 10px; font: 600 19px/1 var(--titoli); margin: 0 6px 30px; }
+.marchio svg { width: 30px; height: 30px; flex: none; }
+nav { display: flex; flex-direction: column; gap: 2px; }
+nav button {
+  text-align: left; background: none; border: 0; padding: 9px 12px; border-radius: 8px;
+  color: var(--grafite); cursor: pointer; font-weight: 500;
+}
+nav button:hover { color: var(--inchiostro); background: var(--foglio); }
+nav button[aria-current="page"] { color: var(--inchiostro); background: var(--foglio); box-shadow: inset 3px 0 0 var(--rec); }
+.dal-vivo { margin-top: auto; padding: 14px 12px; border-top: 1px solid var(--filo); }
+.dal-vivo .riga { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+.punto { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); flex: none; }
+.punto.ascolto { background: var(--rec); animation: pulsa 1.1s ease-in-out infinite; }
+.punto.elabora { background: var(--attesa); }
+.punto.spento { background: var(--barra); }
+@keyframes pulsa { 50% { box-shadow: 0 0 0 6px var(--rec-tenue); } }
+.dal-vivo small { display: block; color: var(--grafite); margin-top: 4px; line-height: 1.4; }
+.versione { color: var(--grafite); font-size: 12px; margin: 10px 12px 0; }
+
+/* ---------- contenuto ---------- */
+main { padding: 44px 56px 80px; max-width: 980px; }
+h1 { font: 600 34px/1.2 var(--titoli); letter-spacing: -.01em; margin: 0 0 8px; max-width: 24ch; }
+h1 .cifra { font-size: 54px; color: var(--rec); letter-spacing: -.02em; }
+h2 { font: 600 18px/1.3 var(--titoli); margin: 0 0 14px; }
+.sotto { color: var(--grafite); margin: 0 0 30px; font-size: 16px; }
+section.blocco { margin-top: 44px; padding-top: 28px; border-top: 1px solid var(--filo); }
+.nota { color: var(--grafite); font-size: 13px; margin: 10px 0 0; max-width: 70ch; }
+
+.avviso {
+  display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  background: var(--rec-tenue); border: 1px solid var(--rec); border-radius: 10px; padding: 14px 18px; margin-bottom: 28px;
+}
+
+/* l'onda: parole al giorno, come un tracciato audio */
+.onda { margin: 0; }
+.barre {
+  display: flex; align-items: center; gap: 6px; height: 150px;
+  background: linear-gradient(var(--filo), var(--filo)) 0 50% / 100% 1px no-repeat;
+}
+.barre .b { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: center; }
+.barre .b span { display: block; width: 100%; max-width: 12px; min-height: 3px; border-radius: 12px; background: var(--barra); }
+.barre .b.oggi span { background: var(--rec); }
+.etichette { display: flex; gap: 6px; margin-top: 8px; }
+.etichette span { flex: 1; text-align: center; font-size: 11.5px; color: var(--grafite); white-space: nowrap; }
+.etichette span.oggi { color: var(--inchiostro); font-weight: 600; }
+.onda figcaption { color: var(--grafite); font-size: 13px; margin-top: 10px; }
+
+.cifre { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 22px 28px; margin: 34px 0 0; }
+.cifre div { margin: 0; }
+.cifre dt { color: var(--grafite); font-size: 13px; }
+.cifre dd { margin: 2px 0 0; font: 600 24px/1.2 var(--titoli); }
+
+/* quota */
+.quota { display: grid; gap: 18px; }
+.modello { display: grid; grid-template-columns: 180px 1fr; grid-template-rows: auto auto; gap: 2px 18px; align-items: center; }
+.modello .nome { grid-row: 1 / 3; align-self: start; }
+.modello .nome { font-weight: 600; }
+.modello .nome small { display: block; font-weight: 400; color: var(--grafite); font-size: 12.5px; }
+.misura { height: 8px; background: var(--filo); border-radius: 8px; overflow: hidden; }
+.misura i { display: block; height: 100%; background: var(--ok); border-radius: 8px; }
+.misura i.medio { background: var(--attesa); }
+.misura i.pieno { background: var(--rec); }
+.modello .dett { grid-column: 2; font-size: 13px; color: var(--grafite); }
+.modello .in-uso { color: var(--ok); font-weight: 600; }
+
+/* dettature */
+.voci { list-style: none; margin: 0; padding: 0; }
+.voci li { padding: 16px 0; border-bottom: 1px solid var(--filo); }
+.voci li:last-child { border-bottom: 0; }
+.meta { font-size: 13px; color: var(--grafite); display: flex; gap: 12px; flex-wrap: wrap; }
+.testo { font: 17px/1.6 var(--scritto); margin: 6px 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 72ch; }
+.grezzo { font-size: 13.5px; color: var(--grafite); margin: 0 0 8px; max-width: 72ch; }
+.azioni { display: flex; gap: 6px; }
+.giorno { font: 600 14px/1 var(--titoli); color: var(--grafite); margin: 30px 0 4px; }
+.giorno:first-child { margin-top: 0; }
+
+/* pulsanti e controlli */
+.pulsante {
+  border: 1px solid var(--filo); background: var(--foglio); border-radius: 8px;
+  padding: 7px 14px; cursor: pointer; font-weight: 500;
+}
+.pulsante:hover { border-color: var(--grafite); }
+.pulsante.primario { background: var(--inchiostro); color: var(--carta); border-color: var(--inchiostro); }
+.pulsante.piccolo { padding: 3px 10px; font-size: 13px; }
+.pulsante.pericolo { color: var(--rec); }
+.pulsante[disabled] { opacity: .55; cursor: progress; }
+.collegamento { background: none; border: 0; padding: 0; color: var(--rec); cursor: pointer; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+
+.cerca { width: 100%; max-width: 520px; padding: 10px 14px; border: 1px solid var(--filo); border-radius: 10px; background: var(--foglio); margin-bottom: 24px; }
+.vuoto { color: var(--grafite); padding: 28px 0; font-size: 16px; max-width: 52ch; }
+
+/* impostazioni */
+.gruppo { margin: 0 0 34px; padding: 0; border: 0; }
+.gruppo legend { font: 600 18px/1.3 var(--titoli); padding: 0; margin-bottom: 4px; }
+.gruppo .spiega { color: var(--grafite); font-size: 13.5px; margin: 0 0 12px; max-width: 64ch; }
+.campo { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 0; border-bottom: 1px solid var(--filo); max-width: 680px; }
+.campo:last-child { border-bottom: 0; }
+.campo label, .campo .etichetta { flex: 1; }
+.campo small { display: block; color: var(--grafite); font-size: 13px; }
+select, input[type="text"] { padding: 7px 10px; border: 1px solid var(--filo); border-radius: 8px; background: var(--foglio); min-width: 220px; }
+.interruttore { appearance: none; width: 42px; height: 24px; border-radius: 24px; background: var(--barra); position: relative; cursor: pointer; flex: none; margin: 0; transition: background .15s; }
+.interruttore::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.interruttore:checked { background: var(--ok); }
+.interruttore:checked::after { transform: translateX(18px); }
+.esito { margin-top: 12px; padding: 14px 16px; border-left: 3px solid var(--filo); max-width: 680px; }
+.esito p { margin: 4px 0; }
+.esito .testo { font-size: 16px; }
+
+/* dizionario */
+.parole { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.parole li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border: 1px solid var(--filo); border-radius: 20px; background: var(--foglio); font-family: var(--scritto); font-size: 16px; }
+.parole button { border: 0; background: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; color: var(--grafite); font-size: 16px; line-height: 1; }
+.parole button:hover { background: var(--rec-tenue); color: var(--rec); }
+.aggiungi { display: flex; gap: 8px; max-width: 560px; }
+.aggiungi input { flex: 1; }
+.scorciatoie { display: grid; gap: 8px; margin-top: 14px; max-width: 760px; }
+.scorciatoia { display: grid; grid-template-columns: 1fr 1.6fr auto; gap: 8px; align-items: center; }
+.scorciatoie .intest { display: grid; grid-template-columns: 1fr 1.6fr auto; gap: 8px; color: var(--grafite); font-size: 13px; }
+.scorciatoie input { min-width: 0; width: 100%; }
+
+/* riscrittura */
+.detto { font-size: 14.5px; color: var(--grafite); margin: 0 0 18px; max-width: 72ch; }
+.detto b { color: var(--inchiostro); font-weight: 600; }
+.livelli { border: 0; margin: 0; padding: 0; max-width: 760px; }
+.livello { display: grid; grid-template-columns: 22px 1fr; gap: 2px 14px; padding: 16px 16px 16px 14px; border-top: 1px solid var(--filo); cursor: pointer; border-radius: 0; }
+.livello:last-child { border-bottom: 1px solid var(--filo); }
+.livello input { margin: 3px 0 0; width: 18px; height: 18px; accent-color: var(--rec); cursor: pointer; }
+.livello .nome { font: 600 16px/1.35 var(--titoli); }
+.livello .nome small { font: 500 12.5px/1 var(--ui); color: var(--ok); margin-left: 8px; }
+.livello .desc { grid-column: 2; color: var(--grafite); font-size: 14px; max-width: 64ch; }
+.livello .es { grid-column: 2; margin: 8px 0 0; font: 15.5px/1.55 var(--scritto); max-width: 68ch; }
+.livello:has(input:checked) { background: var(--foglio); box-shadow: inset 3px 0 0 var(--rec); }
+.prova-riscrittura textarea { width: 100%; max-width: 760px; min-height: 96px; padding: 12px 14px; border: 1px solid var(--filo); border-radius: 10px; background: var(--foglio); font: 16px/1.5 var(--ui); resize: vertical; }
+.riga-prova { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0 0; }
+.risultati { display: grid; gap: 0; margin-top: 18px; max-width: 760px; }
+.risultato { padding: 16px 0; border-top: 1px solid var(--filo); }
+.risultato h3 { font: 600 15px/1.3 var(--titoli); margin: 0; display: flex; gap: 10px; align-items: baseline; }
+.risultato h3 span { font: 400 12.5px/1 var(--ui); color: var(--grafite); }
+.risultato .errore { color: var(--rec); font-size: 14px; margin: 6px 0 0; }
+
+/* aggiornamenti */
+.novita { margin: 8px 0 0; padding-left: 20px; max-width: 64ch; }
+.novita li { margin: 3px 0; }
+.stato-agg { margin: 0; }
+.stato-agg strong { font-weight: 600; }
+
+#toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px); opacity: 0;
+  background: var(--inchiostro); color: var(--carta); padding: 10px 18px; border-radius: 10px;
+  font-weight: 500; transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw;
+}
+#toast.visibile { opacity: 1; transform: translateX(-50%); }
+#toast.errore { background: var(--rec); color: #fff; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; }
+  .lato { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border-right: 0; border-bottom: 1px solid var(--filo); }
+  .marchio { margin: 0 10px 0 0; }
+  nav { flex-direction: row; flex-wrap: wrap; }
+  .dal-vivo, .versione { display: none; }
+  main { padding: 28px 16px 60px; }
+  h1 { font-size: 26px; } h1 .cifra { font-size: 40px; }
+  .modello { grid-template-columns: 1fr; } .modello .dett { grid-column: 1; }
+  .scorciatoia, .scorciatoie .intest { grid-template-columns: 1fr; }
+  .campo { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="lato">
+    <div class="marchio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="var(--rec)"/><rect x="12" y="7" width="8" height="13" rx="4" fill="#fff"/><path d="M9.5 15.5a6.5 6.5 0 0 0 13 0" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M16 22v3.5M12.5 25.5h7" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+      Dettami
+    </div>
+    <nav aria-label="Sezioni">
+      <button data-vista="panoramica" aria-current="page">Panoramica</button>
+      <button data-vista="cronologia">Cronologia</button>
+      <button data-vista="riscrittura">Riscrittura</button>
+      <button data-vista="dizionario">Dizionario</button>
+      <button data-vista="impostazioni">Impostazioni</button>
+    </nav>
+    <div class="dal-vivo" aria-live="polite">
+      <div class="riga"><span class="punto" id="punto"></span><span id="statoTesto">Collegamento…</span></div>
+      <small id="statoAiuto"></small>
+    </div>
+    <p class="versione" id="versione"></p>
+  </aside>
+
+  <main>
+    <!-- ================= Panoramica ================= -->
+    <section id="v-panoramica">
+      <div class="avviso" id="avvisoChiave" hidden>
+        <span>Manca la chiave Groq: finché non la inserisci Dettami non può trascrivere.</span>
+        <button class="pulsante primario" data-azione="chiave">Inserisci la chiave</button>
+      </div>
+      <div class="avviso" id="avvisoAgg" hidden>
+        <span id="avvisoAggTesto"></span>
+        <button class="pulsante primario" id="avvisoAggPulsante">Aggiorna ora</button>
+      </div>
+      <h1 id="frase">Oggi hai dettato <span class="cifra" id="paroleOggi">0</span> parole.</h1>
+      <p class="sotto" id="risparmio">Tieni premuto Ctrl destro e parla: le parole che detti compariranno qui.</p>
+
+      <figure class="onda">
+        <div class="barre" id="barre" role="img" aria-label="Parole dettate al giorno"></div>
+        <div class="etichette" id="etichette" aria-hidden="true"></div>
+        <figcaption>Parole dettate al giorno, ultime due settimane</figcaption>
+      </figure>
+
+      <dl class="cifre">
+        <div><dt>Questa settimana</dt><dd id="cSettimana">0</dd></div>
+        <div><dt>In totale</dt><dd id="cTotale">0</dd></div>
+        <div><dt>Tempo risparmiato</dt><dd id="cRisparmio">0 min</dd></div>
+        <div><dt>Velocità a voce</dt><dd id="cVelocita">–</dd></div>
+      </dl>
+
+      <section class="blocco">
+        <h2>Quota gratuita di Groq oggi</h2>
+        <div class="quota" id="quota"></div>
+        <p class="nota">Ogni modello ha la sua quota giornaliera. Quando uno la finisce, Dettami passa da sola al successivo. <button class="collegamento" data-azione="consumi">Vedi i consumi su Groq</button></p>
+      </section>
+
+      <section class="blocco">
+        <h2>Ultime dettature</h2>
+        <ol class="voci" id="recenti"></ol>
+        <p><button class="collegamento" data-vai="cronologia">Vedi tutta la cronologia</button></p>
+      </section>
+    </section>
+
+    <!-- ================= Cronologia ================= -->
+    <section id="v-cronologia" hidden>
+      <h1>Cronologia</h1>
+      <p class="sotto">Tutto quello che hai dettato. Resta solo su questo computer.</p>
+      <input class="cerca" type="search" id="cerca" placeholder="Cerca nelle dettature o per programma" aria-label="Cerca nelle dettature">
+      <div id="lista"></div>
+      <section class="blocco">
+        <button class="pulsante pericolo" id="cancellaCronologia">Cancella tutta la cronologia</button>
+      </section>
+    </section>
+
+    <!-- ================= Riscrittura ================= -->
+    <section id="v-riscrittura" hidden>
+      <h1>Riscrittura</h1>
+      <p class="sotto">Quanto Dettami può cambiare le tue frasi. Vale per tutte le dettature e la cambi anche dal menu dell'icona.</p>
+      <p class="detto" id="esDetto"></p>
+      <fieldset class="livelli" id="livelli" aria-label="Quanto riscrivere">
+        <label class="livello"><input type="radio" name="livello" value="spenta">
+          <span class="nome">Solo trascrizione</span>
+          <span class="desc">Il testo come lo capisce la trascrizione, con la sua punteggiatura. Nessuna AI: utile se vuoi le tue parole esatte.</span></label>
+        <label class="livello"><input type="radio" name="livello" value="fedele">
+          <span class="nome">Fedele</span>
+          <span class="desc">Toglie esitazioni e ripetizioni, applica le correzioni che fai a voce e sistema la punteggiatura. Le frasi restano le tue.</span>
+          <span class="es" id="es-fedele"></span></label>
+        <label class="livello"><input type="radio" name="livello" value="chiara">
+          <span class="nome">Chiara<small>consigliata</small></span>
+          <span class="desc">Riformula le frasi contorte o poco chiare, mette in ordine le idee e toglie i concetti ripetuti. Significato e tono restano i tuoi.</span>
+          <span class="es" id="es-chiara"></span></label>
+        <label class="livello"><input type="radio" name="livello" value="ottimizzata">
+          <span class="nome">Ottimizzata</span>
+          <span class="desc">Riscrive il testo perché sia scorrevole e ben strutturato, come se l'avessi scritto con calma. Ideale per email e documenti; ci mette un secondo in più.</span>
+          <span class="es" id="es-ottimizzata"></span></label>
+      </fieldset>
+
+      <section class="blocco prova-riscrittura">
+        <h2>Prova con le tue parole</h2>
+        <p class="nota" style="margin:-6px 0 12px">Scrivi una frase come la diresti a voce, con esitazioni e ripetizioni, e confronta i tre livelli. La prova usa la tua quota Groq come una dettatura normale.</p>
+        <textarea id="provaTesto" maxlength="4000" aria-label="Frase da provare" placeholder="Es. allora volevo dirti che domani cioè forse dopodomani passo a prendere i documenti però prima ti chiamo"></textarea>
+        <div class="riga-prova">
+          <label for="provaStile">Dove la scriveresti</label>
+          <select id="provaStile">
+            <option value="normale">Un documento</option>
+            <option value="chat">Una chat</option>
+            <option value="email">Un'email</option>
+            <option value="prompt">Una richiesta a un'AI</option>
+            <option value="tecnico">Un programma tecnico</option>
+          </select>
+          <button class="pulsante primario" id="confronta">Confronta i livelli</button>
+        </div>
+        <div class="risultati" id="risultati" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <!-- ================= Dizionario ================= -->
+    <section id="v-dizionario" hidden>
+      <h1>Dizionario</h1>
+      <p class="sotto">Nomi e parole che Dettami deve scrivere sempre nello stesso modo: persone, clienti, aziende, prodotti, sigle.</p>
+      <form class="aggiungi" id="formParola">
+        <input type="text" id="nuovaParola" placeholder="Es. Mario Rossi, Acme S.r.l., PowerPoint" aria-label="Nuova parola" maxlength="80">
+        <button class="pulsante primario" type="submit">Aggiungi</button>
+      </form>
+      <ul class="parole" id="parole"></ul>
+
+      <section class="blocco">
+        <h2>Scorciatoie vocali</h2>
+        <p class="nota" style="margin-top:0">Quando pronunci la frase a sinistra, viene scritto il testo a destra. Comodo per email, indirizzi, firme.</p>
+        <div class="scorciatoie" id="scorciatoie">
+          <div class="intest"><span>Quando dici</span><span>Scrive</span><span></span></div>
+        </div>
+        <p><button class="pulsante" id="aggiungiScorciatoia">Aggiungi una scorciatoia</button></p>
+      </section>
+    </section>
+
+    <!-- ================= Impostazioni ================= -->
+    <section id="v-impostazioni" hidden>
+      <h1>Impostazioni</h1>
+      <p class="sotto">Le modifiche si salvano da sole.</p>
+
+      <fieldset class="gruppo">
+        <legend>Tasto</legend>
+        <div class="campo"><label for="i-tasto">Tasto da tenere premuto mentre parli</label><select id="i-tasto" data-imp="tasto"></select></div>
+        <div class="campo"><label for="i-mani">Doppio tocco per le mani libere<small>Tocca due volte il tasto, parla quanto vuoi, toccalo ancora per finire.</small></label><input type="checkbox" class="interruttore" role="switch" id="i-mani" data-imp="mani_libere"></div>
+      </fieldset>
+
+      <fieldset class="gruppo">
+        <legend>Lingua</legend>
+        <div class="campo"><label for="i-lingua">Lingua in cui parli</label><select id="i-lingua" data-imp="lingua"></select></div>
+        <div class="campo"><label for="i-trad">Traduci in<small>Tieni premuto Shift mentre detti e il testo viene scritto tradotto.</small></label><select id="i-trad" data-imp="lingua_traduzione"></select></div>
+      </fieldset>
+
+      <fieldset class="gruppo">
+        <legend>Testo</legend>
+        <div class="campo"><span class="etichetta">Quanto riscrivere le frasi<small id="riassuntoLivello"></small></span><button class="pulsante" data-vai="riscrittura">Scegli</button></div>
+        <div class="campo"><label for="i-metodo">Come inserire il testo<small>Usa "Digita" solo nei programmi che bloccano l'incolla.</small></label><select id="i-metodo" data-imp="metodo"><option value="incolla">Incolla (consigliato)</option><option value="digita">Digita carattere per carattere</option></select></div>
+        <div class="campo"><label for="i-spazio">Spazio dopo ogni dettatura</label><input type="checkbox" class="interruttore" role="switch" id="i-spazio" data-imp="spazio_finale"></div>
+      </fieldset>
+
+      <fieldset class="gruppo">
+        <legend>Indicatore a schermo</legend>
+        <p class="spiega">La pillola che compare mentre detti: rossa quando ascolta, arancione mentre scrive, verde quando ha inserito il testo, con il pulsante Copia.</p>
+        <div class="campo"><label for="i-ind">Mostra l'indicatore</label><input type="checkbox" class="interruttore" role="switch" id="i-ind" data-imp="indicatore"></div>
+        <div class="campo"><label for="i-copia">Pulsante Copia dopo ogni dettatura<small>La pillola resta qualche secondo con un pulsante per copiare il testo e incollarlo dove vuoi. Col mouse sopra non sparisce.</small></label><input type="checkbox" class="interruttore" role="switch" id="i-copia" data-imp="pulsante_copia"></div>
+        <div class="campo"><label for="i-pos">Posizione</label><select id="i-pos" data-imp="posizione_indicatore"><option value="basso">In basso al centro</option><option value="alto">In alto al centro</option></select></div>
+        <div class="campo"><span class="etichetta">Vedi come appare</span><button class="pulsante" data-azione="anteprima">Mostra un'anteprima</button></div>
+      </fieldset>
+
+      <fieldset class="gruppo">
+        <legend>Microfono e suoni</legend>
+        <div class="campo"><label for="i-mic">Microfono</label><select id="i-mic" data-imp="microfono"></select></div>
+        <div class="campo"><label for="i-suoni">Suoni di inizio e fine</label><input type="checkbox" class="interruttore" role="switch" id="i-suoni" data-imp="suoni"></div>
+        <div class="campo"><label for="i-sempre">Microfono sempre pronto<small>Nessun ritardo all'inizio, ma Windows mostra sempre l'icona del microfono in uso.</small></label><input type="checkbox" class="interruttore" role="switch" id="i-sempre" data-imp="microfono_sempre_aperto"></div>
+        <div class="campo"><span class="etichetta">Prova il microfono<small>Registra 4 secondi e ti mostra cosa ha capito.</small></span><button class="pulsante" id="prova">Avvia la prova</button></div>
+        <div class="esito" id="esitoProva" hidden></div>
+      </fieldset>
+
+      <fieldset class="gruppo" id="gruppoAgg">
+        <legend>Aggiornamenti</legend>
+        <div class="campo"><span class="etichetta">Versione <span id="aggVersione"></span><small id="aggStato">–</small></span><button class="pulsante" id="aggControlla">Controlla ora</button></div>
+        <div class="esito" id="aggDisponibile" hidden>
+          <p class="stato-agg"><strong id="aggTitolo"></strong></p>
+          <ul class="novita" id="aggNote"></ul>
+          <p class="riga-prova"><button class="pulsante primario" id="aggInstalla">Aggiorna ora</button><span class="nota" id="aggSpiega" style="margin:0"></span></p>
+        </div>
+        <div class="campo"><label for="i-agg">Installa da solo gli aggiornamenti<small>Li installa quando non stai dettando, in pochi secondi. Se la nuova versione non parte, torna da solo a quella di prima.</small></label><input type="checkbox" class="interruttore" role="switch" id="i-agg" data-imp="aggiornamenti_automatici"></div>
+        <div class="campo"><span class="etichetta">Dettami è gratuita e open source<small>Novità, codice e segnalazione di problemi su GitHub.</small></span><button class="pulsante" data-apri="progetto">Apri GitHub</button></div>
+      </fieldset>
+
+      <fieldset class="gruppo">
+        <legend>Avvio</legend>
+        <div class="campo"><label for="i-avvio">Avvia Dettami con Windows</label><input type="checkbox" class="interruttore" role="switch" id="i-avvio"></div>
+      </fieldset>
+
+      <fieldset class="gruppo">
+        <legend>Chiave Groq</legend>
+        <div class="campo"><span class="etichetta">Chiave in uso<small id="chiaveMascherata">–</small></span><button class="pulsante" data-azione="chiave">Cambia chiave</button></div>
+      </fieldset>
+
+      <fieldset class="gruppo">
+        <legend>Avanzate</legend>
+        <p class="spiega">Stili per programma, modelli AI e altre opzioni si trovano nel file di impostazioni avanzate. Dopo averlo modificato, usa "Ricarica impostazioni" dal menu dell'icona.</p>
+        <div class="campo"><span class="etichetta">File di impostazioni avanzate</span><button class="pulsante" data-apri="config">Apri</button></div>
+        <div class="campo"><span class="etichetta">Registro degli eventi<small>Utile se qualcosa non funziona.</small></span><button class="pulsante" data-apri="log">Apri</button></div>
+        <div class="campo"><span class="etichetta">Cartella del programma<small id="cartella"></small></span><button class="pulsante" data-apri="cartella">Apri</button></div>
+      </fieldset>
+    </section>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const TOKEN = new URLSearchParams(location.search).get("t") || "";
+const num = new Intl.NumberFormat("it-IT");
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+let vista = "panoramica", contatore = -1, impostazioni = null;
+
+async function api(percorso, dati) {
+  const opz = { headers: { "X-Token": TOKEN } };
+  if (dati !== undefined) {
+    opz.method = "POST";
+    opz.headers["Content-Type"] = "application/json";
+    opz.body = JSON.stringify(dati);
+  }
+  const r = await fetch(percorso, opz);
+  let j = {};
+  try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(j.errore || "Dettami non risponde: controlla che sia aperta.");
+  return j;
+}
+
+let timerToast;
+function toast(testo, errore = false) {
+  const t = $("#toast");
+  t.textContent = testo;
+  t.classList.toggle("errore", errore);
+  t.classList.add("visibile");
+  clearTimeout(timerToast);
+  timerToast = setTimeout(() => t.classList.remove("visibile"), errore ? 4500 : 1800);
+}
+
+function el(tag, attr = {}, ...figli) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attr)) {
+    if (k === "class") e.className = v;
+    else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const f of figli) if (f != null) e.append(f);
+  return e;
+}
+
+/* ---------- navigazione ---------- */
+function mostraVista(nome) {
+  vista = nome;
+  $$("nav button").forEach(b => b.dataset.vista === nome ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  $$("main > section").forEach(s => s.hidden = s.id !== "v-" + nome);
+  carica(nome);
+  window.scrollTo(0, 0);
+}
+$$("nav button").forEach(b => b.addEventListener("click", () => mostraVista(b.dataset.vista)));
+document.addEventListener("click", e => {
+  const vai = e.target.closest("[data-vai]");
+  if (vai) mostraVista(vai.dataset.vai);
+  const az = e.target.closest("[data-azione]");
+  if (az) azione(az.dataset.azione, az);
+  const apri = e.target.closest("[data-apri]");
+  if (apri) api("/api/apri", { cosa: apri.dataset.apri }).catch(err => toast(err.message, true));
+});
+
+async function azione(nome, bottone) {
+  try {
+    if (nome === "chiave") { await api("/api/chiave", {}); toast("Si è aperta la finestra per la chiave"); }
+    if (nome === "consumi") { await api("/api/apri", { cosa: "consumi" }); }
+    if (nome === "anteprima") { await api("/api/anteprima", {}); toast("Guarda in basso: ecco l'indicatore"); }
+  } catch (err) { toast(err.message, true); }
+}
+
+function carica(nome) {
+  if (nome === "panoramica") caricaPanoramica();
+  if (nome === "cronologia") caricaCronologia();
+  if (nome === "dizionario" || nome === "impostazioni" || nome === "riscrittura") caricaImpostazioni();
+  if (nome === "impostazioni") caricaAggiornamenti();
+}
+
+/* ---------- stato dal vivo ---------- */
+const TESTI_STATO = {
+  pronto: "Pronta", ascolto: "Ti sto ascoltando", traduci: "Ascolto e traduco",
+  elabora: "Sto scrivendo", errore: "Manca la chiave Groq",
+};
+async function aggiornaStato() {
+  try {
+    const s = await api("/api/stato");
+    $("#statoTesto").textContent = TESTI_STATO[s.stato] || "Pronta";
+    $("#punto").className = "punto " + ({ ascolto: "ascolto", traduci: "ascolto", elabora: "elabora", errore: "spento" }[s.stato] || "");
+    $("#statoAiuto").textContent = s.stato === "errore" ? "Inseriscila da Impostazioni." : `Tieni premuto ${s.tasto_nome} e parla.`;
+    $("#versione").textContent = "Versione " + s.versione;
+    if (versionePagina === null) versionePagina = s.versione;
+    else if (s.versione !== versionePagina) { location.reload(); return; }
+    const ban = $("#avvisoAgg");
+    ban.hidden = !s.aggiornamento;
+    if (s.aggiornamento) {
+      $("#avvisoAggTesto").textContent = s.aggiornamento_in_corso
+        ? `Sto installando la versione ${s.aggiornamento}: Dettami si riavvia da sola.`
+        : `È disponibile la versione ${s.aggiornamento} di Dettami.`;
+      $("#avvisoAggPulsante").hidden = s.aggiornamento_in_corso;
+    }
+    if (vista === "impostazioni" && (s.aggiornamento_in_corso || $("#aggStato").textContent.startsWith("Sto"))) caricaAggiornamenti();
+    $("#avvisoChiave").hidden = s.chiave_presente;
+    if (s.contatore !== contatore) {
+      const primo = contatore === -1;
+      contatore = s.contatore;
+      if (!primo && (vista === "panoramica" || vista === "cronologia")) carica(vista);
+    }
+  } catch (e) {
+    $("#statoTesto").textContent = "Dettami è chiusa";
+    $("#punto").className = "punto spento";
+    $("#statoAiuto").textContent = "Riaprila dal menu Start.";
+  }
+}
+
+/* ---------- panoramica ---------- */
+const NOMI_MODELLI = {
+  "whisper-large-v3-turbo": "Whisper Turbo", "whisper-large-v3": "Whisper",
+  "openai/gpt-oss-120b": "GPT-OSS 120B", "openai/gpt-oss-20b": "GPT-OSS 20B", "qwen/qwen3.8-27b": "Qwen 27B",
+};
+function durataTra(epoch) {
+  const s = Math.max(0, epoch - Date.now() / 1000);
+  if (s < 90) return Math.round(s) + " secondi";
+  if (s < 5400) return Math.round(s / 60) + " minuti";
+  return Math.round(s / 3600) + " ore";
+}
+
+async function caricaPanoramica() {
+  let st;
+  try { st = await api("/api/statistiche"); } catch (e) { return toast(e.message, true); }
+  $("#paroleOggi").textContent = num.format(st.parole_oggi);
+  $("#frase").firstChild.textContent = st.parole_oggi === 1 ? "Oggi hai dettato " : "Oggi hai dettato ";
+  $("#frase").lastChild.textContent = st.parole_oggi === 1 ? " parola." : " parole.";
+  if (st.dettature === 0) {
+    $("#risparmio").textContent = "Tieni premuto Ctrl destro e parla: le parole che detti compariranno qui.";
+  } else if (st.parole_oggi === 0) {
+    $("#risparmio").textContent = "Ancora nessuna dettatura oggi.";
+  } else {
+    const m = st.minuti_risparmiati_oggi;
+    $("#risparmio").textContent = m >= 1
+      ? `Circa ${m} ${m === 1 ? "minuto" : "minuti"} in meno rispetto a scriverle a mano, in ${st.dettature_oggi} ${st.dettature_oggi === 1 ? "dettatura" : "dettature"}.`
+      : `In ${st.dettature_oggi} ${st.dettature_oggi === 1 ? "dettatura" : "dettature"}.`;
+  }
+  const max = Math.max(1, ...st.giorni.map(g => g.parole));
+  const barre = $("#barre"), etich = $("#etichette");
+  barre.replaceChildren(); etich.replaceChildren();
+  st.giorni.forEach((g, i) => {
+    const h = g.parole ? Math.max(4, Math.round(g.parole / max * 100)) : 2;
+    const b = el("div", { class: "b" + (g.oggi ? " oggi" : ""), title: `${g.etichetta}: ${num.format(g.parole)} parole` }, el("span"));
+    b.firstChild.style.height = h + "%";
+    barre.append(b);
+    const mostra = g.oggi || i % 2 === (st.giorni.length - 1) % 2;
+    etich.append(el("span", { class: g.oggi ? "oggi" : "", text: g.oggi ? "oggi" : (mostra ? g.etichetta : "") }));
+  });
+  $("#barre").setAttribute("aria-label", "Parole al giorno: " + st.giorni.map(g => `${g.etichetta} ${g.parole}`).join(", "));
+  $("#cSettimana").textContent = num.format(st.parole_settimana);
+  $("#cTotale").textContent = num.format(st.parole);
+  $("#cRisparmio").textContent = st.minuti_risparmiati >= 60
+    ? `${Math.floor(st.minuti_risparmiati / 60)} h ${st.minuti_risparmiati % 60} min` : `${st.minuti_risparmiati} min`;
+  $("#cVelocita").textContent = st.parole_al_minuto ? `${st.parole_al_minuto} parole/min` : "–";
+
+  const q = $("#quota");
+  q.replaceChildren();
+  let inUso = { trascrizione: false, ai: false };
+  for (const r of st.quota) {
+    const perc = Math.round(r.usata * 100);
+    let dett;
+    if (r.bloccato_fino) dett = `Quota finita, torna disponibile tra ${durataTra(r.bloccato_fino)}.`;
+    else if (r.rimaste != null) dett = `${num.format(r.rimaste)} richieste rimaste oggi su ${num.format(r.limite)}.`;
+    else if (!r.richieste_oggi) dett = "Non ancora usato oggi.";
+    else dett = `${num.format(r.richieste_oggi)} richieste oggi.`;
+    if (r.tipo === "ai" && r.token_oggi) dett += ` ${num.format(r.token_oggi)} token usati su circa ${num.format(r.limite_token)}.`;
+    const attivo = !r.bloccato_fino && !inUso[r.tipo];
+    if (attivo) inUso[r.tipo] = true;
+    const barra = el("i", { class: perc >= 90 ? "pieno" : perc >= 60 ? "medio" : "" });
+    barra.style.width = Math.max(perc, r.richieste_oggi ? 2 : 0) + "%";
+    q.append(el("div", { class: "modello" },
+      el("div", { class: "nome", text: NOMI_MODELLI[r.modello] || r.modello },
+        el("small", { text: r.tipo === "trascrizione" ? "Trascrizione" : "Pulizia del testo" })),
+      el("div", { class: "misura", role: "img", "aria-label": `${perc}% della quota usata` }, barra),
+      el("div", { class: "dett" }, attivo ? el("span", { class: "in-uso", text: "In uso. " }) : null, dett)));
+  }
+
+  try {
+    const voci = await api("/api/cronologia?limite=4");
+    const ol = $("#recenti");
+    ol.replaceChildren(...voci.map(voce));
+    if (!voci.length) ol.append(el("li", { class: "vuoto", text: "Qui vedrai le tue ultime dettature." }));
+  } catch (e) {}
+}
+
+/* ---------- cronologia ---------- */
+function ora(ts) { return new Date(ts).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }); }
+function nomeGiorno(ts) {
+  const d = new Date(ts), oggi = new Date(), ieri = new Date(Date.now() - 864e5);
+  const stesso = (a, b) => a.toDateString() === b.toDateString();
+  if (stesso(d, oggi)) return "Oggi";
+  if (stesso(d, ieri)) return "Ieri";
+  const s = d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+const NOMI_APP = {
+  whatsapp: "WhatsApp", chrome: "Chrome", msedge: "Edge", firefox: "Firefox", outlook: "Outlook",
+  olk: "Outlook", winword: "Word", excel: "Excel", powerpnt: "PowerPoint", claude: "Claude",
+  code: "VS Code", notepad: "Blocco note", telegram: "Telegram", slack: "Slack", teams: "Teams", "ms-teams": "Teams",
+  explorer: "Esplora file", windowsterminal: "Terminale",
+};
+function voce(v) {
+  const app = NOMI_APP[v.app] || (v.app ? v.app.charAt(0).toUpperCase() + v.app.slice(1) : "");
+  const meta = el("div", { class: "meta" }, el("span", { text: ora(v.ts) }));
+  if (app) meta.append(el("span", { text: app }));
+  if (v.tradotto) meta.append(el("span", { text: "Tradotto" }));
+  const grezzo = v.grezzo && v.grezzo !== v.testo ? el("p", { class: "grezzo", hidden: "", text: "Detto: " + v.grezzo }) : null;
+  const azioni = el("div", { class: "azioni" },
+    el("button", { class: "pulsante piccolo", text: "Copia", onclick: () => copia(v.testo) }));
+  if (grezzo) azioni.append(el("button", {
+    class: "pulsante piccolo", text: "Mostra cosa ho detto",
+    onclick: e => { grezzo.hidden = !grezzo.hidden; e.target.textContent = grezzo.hidden ? "Mostra cosa ho detto" : "Nascondi"; }
+  }));
+  return el("li", {}, meta, el("p", { class: "testo", text: v.testo }), grezzo, azioni);
+}
+async function copia(testo) {
+  try { await navigator.clipboard.writeText(testo); }
+  catch (e) {
+    const t = el("textarea"); t.value = testo; document.body.append(t); t.select();
+    document.execCommand("copy"); t.remove();
+  }
+  toast("Copiato");
+}
+let attesaRicerca;
+$("#cerca").addEventListener("input", () => { clearTimeout(attesaRicerca); attesaRicerca = setTimeout(caricaCronologia, 200); });
+async function caricaCronologia() {
+  const q = $("#cerca").value;
+  let voci;
+  try { voci = await api("/api/cronologia?limite=500&q=" + encodeURIComponent(q)); } catch (e) { return toast(e.message, true); }
+  const lista = $("#lista");
+  lista.replaceChildren();
+  if (!voci.length) {
+    lista.append(el("p", { class: "vuoto", text: q ? "Nessuna dettatura contiene queste parole." : "Ancora nessuna dettatura. Tieni premuto Ctrl destro e parla in qualsiasi programma." }));
+    return;
+  }
+  let giorno = "", ol;
+  for (const v of voci) {
+    const g = nomeGiorno(v.ts);
+    if (g !== giorno) { giorno = g; lista.append(el("h2", { class: "giorno", text: g })); ol = el("ol", { class: "voci" }); lista.append(ol); }
+    ol.append(voce(v));
+  }
+}
+$("#cancellaCronologia").addEventListener("click", async () => {
+  if (!confirm("Cancellare tutta la cronologia delle dettature? Non si può annullare.")) return;
+  try { await api("/api/cronologia/cancella", {}); toast("Cronologia cancellata"); caricaCronologia(); }
+  catch (e) { toast(e.message, true); }
+});
+
+/* ---------- impostazioni e dizionario ---------- */
+function opzioni(select, elenco, valore) {
+  select.replaceChildren(...elenco.map(o => el("option", { value: o.valore, text: o.nome })));
+  select.value = valore;
+}
+async function caricaImpostazioni() {
+  try { impostazioni = await api("/api/impostazioni"); } catch (e) { return toast(e.message, true); }
+  const v = impostazioni.valori, o = impostazioni.opzioni;
+  opzioni($("#i-tasto"), o.tasti, v.tasto);
+  opzioni($("#i-lingua"), o.lingue, v.lingua);
+  opzioni($("#i-trad"), o.lingue_traduzione, v.lingua_traduzione);
+  opzioni($("#i-mic"), o.microfoni, v.microfono);
+  for (const c of $$("[data-imp]")) {
+    if (c.type === "checkbox") c.checked = !!v[c.dataset.imp];
+    else if (c.tagName === "SELECT" && !["i-tasto", "i-lingua", "i-trad", "i-mic"].includes(c.id)) c.value = v[c.dataset.imp];
+  }
+  $("#i-avvio").checked = impostazioni.avvio_automatico;
+  $("#chiaveMascherata").textContent = impostazioni.chiave.presente ? impostazioni.chiave.mascherata : "Nessuna chiave inserita";
+  $("#cartella").textContent = impostazioni.cartella;
+  disegnaParole(); disegnaScorciatoie(); disegnaLivelli();
+}
+
+/* ---------- riscrittura ---------- */
+const NOMI_LIVELLI = { spenta: "Solo trascrizione", fedele: "Fedele", chiara: "Chiara", ottimizzata: "Ottimizzata" };
+function livelloAttuale() {
+  const v = impostazioni.valori;
+  return v.ai_attiva ? v.riscrittura : "spenta";
+}
+function disegnaLivelli() {
+  const es = impostazioni.esempio;
+  $("#esDetto").replaceChildren(el("b", { text: "Esempio, detto a voce: " }), "«" + es.detto + "»");
+  for (const l of ["fedele", "chiara", "ottimizzata"]) $("#es-" + l).textContent = es[l];
+  const att = livelloAttuale();
+  for (const r of $$("#livelli input")) r.checked = r.value === att;
+  $("#riassuntoLivello").textContent = "Adesso: " + NOMI_LIVELLI[att];
+}
+$("#livelli").addEventListener("change", async e => {
+  const v = e.target.value;
+  const dati = v === "spenta" ? { ai_attiva: false } : { ai_attiva: true, riscrittura: v };
+  if (await salva(dati, "Riscrittura: " + NOMI_LIVELLI[v])) { disegnaLivelli(); disegnaConfronto(); }
+});
+let ultimoConfronto = null;
+function disegnaConfronto() {
+  const r = ultimoConfronto, box = $("#risultati");
+  if (!r) return;
+  const att = livelloAttuale();
+  box.replaceChildren(...r.risultati.map(x => {
+    const titolo = el("h3", {}, NOMI_LIVELLI[x.livello]);
+    if (x.secondi) titolo.append(el("span", { text: num.format(x.secondi) + " s" }));
+    if (x.livello === att) titolo.append(el("span", { text: "il livello che usi adesso" }));
+    const blocco = el("div", { class: "risultato" }, titolo);
+    if (x.testo) blocco.append(el("p", { class: "testo", text: x.testo }));
+    if (x.errore) blocco.append(el("p", { class: "errore", text: x.errore }));
+    const az = el("div", { class: "azioni" });
+    if (x.testo) az.append(el("button", { class: "pulsante piccolo", text: "Copia", onclick: () => copia(x.testo) }));
+    if (x.livello !== att) az.append(el("button", {
+      class: "pulsante piccolo", text: "Usa questo livello",
+      onclick: async () => {
+        if (await salva({ ai_attiva: true, riscrittura: x.livello }, "Riscrittura: " + NOMI_LIVELLI[x.livello])) {
+          disegnaLivelli(); disegnaConfronto();
+        }
+      }
+    }));
+    blocco.append(az);
+    return blocco;
+  }));
+}
+$("#confronta").addEventListener("click", async e => {
+  const b = e.target, box = $("#risultati");
+  const testo = $("#provaTesto").value.trim();
+  if (!testo) { toast("Scrivi prima una frase da provare", true); $("#provaTesto").focus(); return; }
+  b.disabled = true; b.textContent = "Riscrivo…";
+  box.replaceChildren(el("p", { class: "nota", text: "Sto riscrivendo nei tre livelli…" }));
+  try {
+    ultimoConfronto = await api("/api/riscrivi", { testo, stile: $("#provaStile").value });
+    disegnaConfronto();
+  } catch (err) { box.replaceChildren(el("p", { class: "errore", text: err.message })); }
+  b.disabled = false; b.textContent = "Confronta i livelli";
+});
+async function salva(dati, messaggio = "Salvato") {
+  try {
+    impostazioni.valori = Object.assign(impostazioni.valori, (await api("/api/impostazioni", dati)).valori);
+    toast(messaggio);
+    return true;
+  } catch (e) { toast(e.message, true); caricaImpostazioni(); return false; }
+}
+for (const c of $$("[data-imp]")) {
+  c.addEventListener("change", () => salva({ [c.dataset.imp]: c.type === "checkbox" ? c.checked : c.value }));
+}
+$("#i-avvio").addEventListener("change", async e => {
+  try {
+    const r = await api("/api/avvio", { attivo: e.target.checked });
+    e.target.checked = r.attivo;
+    toast(r.attivo ? "Partirà all'accensione del PC" : "Non partirà più da sola");
+  } catch (err) { toast(err.message, true); e.target.checked = !e.target.checked; }
+});
+
+function disegnaParole() {
+  const ul = $("#parole");
+  const parole = impostazioni.valori.dizionario;
+  ul.replaceChildren(...parole.map(p => el("li", {}, p,
+    el("button", { "aria-label": `Rimuovi ${p}`, title: "Rimuovi", text: "×",
+      onclick: () => { impostazioni.valori.dizionario = parole.filter(x => x !== p); salva({ dizionario: impostazioni.valori.dizionario }, "Parola rimossa").then(disegnaParole); } }))));
+  if (!parole.length) ul.append(el("li", { class: "vuoto", style: "border:0;background:none;padding:0", text: "Ancora nessuna parola." }));
+}
+$("#formParola").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = $("#nuovaParola"), p = input.value.trim();
+  if (!p) return;
+  if (impostazioni.valori.dizionario.some(x => x.toLowerCase() === p.toLowerCase())) { toast("È già nel dizionario"); return; }
+  impostazioni.valori.dizionario = [...impostazioni.valori.dizionario, p];
+  input.value = "";
+  salva({ dizionario: impostazioni.valori.dizionario }, "Aggiunta").then(disegnaParole);
+});
+
+function disegnaScorciatoie() {
+  const box = $("#scorciatoie");
+  $$(".scorciatoia", box).forEach(r => r.remove());
+  const voci = Object.entries(impostazioni.valori.scorciatoie);
+  for (const [k, v] of voci) box.append(rigaScorciatoia(k, v));
+}
+function rigaScorciatoia(k = "", v = "") {
+  const a = el("input", { type: "text", value: k, placeholder: "la mia mail", "aria-label": "Quando dici", maxlength: "80" });
+  const b = el("input", { type: "text", value: v, placeholder: "nome@esempio.it", "aria-label": "Scrive", maxlength: "1000" });
+  const riga = el("div", { class: "scorciatoia" }, a, b,
+    el("button", { class: "pulsante piccolo", text: "Rimuovi", onclick: () => { riga.remove(); salvaScorciatoie(); } }));
+  a.addEventListener("change", salvaScorciatoie);
+  b.addEventListener("change", salvaScorciatoie);
+  return riga;
+}
+function salvaScorciatoie() {
+  const dati = {};
+  for (const r of $$(".scorciatoia")) {
+    const [a, b] = $$("input", r);
+    if (a.value.trim() && b.value.trim()) dati[a.value.trim()] = b.value.trim();
+  }
+  salva({ scorciatoie: dati });
+}
+$("#aggiungiScorciatoia").addEventListener("click", () => {
+  const r = rigaScorciatoia();
+  $("#scorciatoie").append(r);
+  r.querySelector("input").focus();
+});
+
+$("#prova").addEventListener("click", async e => {
+  const b = e.target, box = $("#esitoProva");
+  b.disabled = true; b.textContent = "Parla adesso…";
+  box.hidden = false; box.replaceChildren(el("p", { text: "Registro per 4 secondi: di' una frase qualsiasi." }));
+  try {
+    const r = await api("/api/prova", {});
+    box.replaceChildren();
+    if (!r.voce) {
+      box.append(el("p", { text: `Non ho sentito la tua voce (livello ${r.livello}). Controlla di aver scelto il microfono giusto, o che non sia disattivato.` }));
+    } else {
+      box.append(el("p", { class: "meta", text: `Livello voce ${num.format(r.livello)}. Trascrizione in ${num.format(r.t_trascrizione)} s, pulizia in ${num.format(r.t_ai)} s.` }));
+      box.append(el("p", { class: "testo", text: r.testo || "(nessun testo)" }));
+      if (r.grezzo && r.grezzo !== r.testo) box.append(el("p", { class: "grezzo", text: "Detto: " + r.grezzo }));
+    }
+  } catch (err) { box.replaceChildren(el("p", { text: err.message })); }
+  b.disabled = false; b.textContent = "Avvia la prova";
+});
+
+/* ---------- aggiornamenti ---------- */
+let versionePagina = null;
+function quando(epoch) {
+  if (!epoch) return "";
+  const d = new Date(epoch * 1000);
+  return d.toDateString() === new Date().toDateString()
+    ? "oggi alle " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("it-IT", { day: "numeric", month: "long" });
+}
+function disegnaAggiornamenti(a) {
+  $("#aggVersione").textContent = a.versione;
+  let stato;
+  if (a.stato === "controllo") stato = "Sto controllando…";
+  else if (a.stato === "installazione") stato = "Sto aggiornando: Dettami si riavvia da sola tra pochi secondi.";
+  else if (a.errore) stato = a.errore + (a.ultimo_controllo ? ` (${quando(a.ultimo_controllo)})` : "");
+  else if (a.disponibile) stato = `È disponibile la versione ${a.disponibile}.`;
+  else if (a.ultimo_controllo) stato = `È l'ultima versione. Controllato ${quando(a.ultimo_controllo)}.`;
+  else stato = a.controlla ? "Il primo controllo parte poco dopo l'avvio." : "Controllo degli aggiornamenti spento nelle impostazioni avanzate.";
+  $("#aggStato").textContent = stato;
+  const box = $("#aggDisponibile");
+  box.hidden = !a.disponibile;
+  if (a.disponibile) {
+    $("#aggTitolo").textContent = `Novità della versione ${a.disponibile}`;
+    $("#aggNote").replaceChildren(...(a.note.length ? a.note : ["Correzioni e miglioramenti."]).map(n => el("li", { text: n })));
+    const b = $("#aggInstalla");
+    b.disabled = a.stato === "installazione";
+    b.textContent = a.richiede_installer ? "Scarica il nuovo installer" : (a.stato === "installazione" ? "Aggiornamento in corso…" : "Aggiorna ora");
+    $("#aggSpiega").textContent = a.stato === "installazione" ? ""
+      : a.richiede_installer
+      ?"Questa versione cambia componenti di base: va installata con il nuovo installer, impostazioni e cronologia restano."
+      : a.saltata ? "Un tentativo precedente non è riuscito ed è tornata la versione di prima: puoi riprovare a mano."
+      : a.automatici ? "Si installerà da sola appena smetti di dettare per qualche minuto." : "";
+  }
+}
+async function caricaAggiornamenti() {
+  try { disegnaAggiornamenti(await api("/api/aggiornamenti")); } catch (e) {}
+}
+async function installaAggiornamento() {
+  try {
+    const a = await api("/api/aggiornamenti");
+    if (a.richiede_installer) { await api("/api/apri", { cosa: "setup" }); return; }
+    await api("/api/aggiornamenti/installa", {});
+    toast("Sto aggiornando: la dashboard si ricarica da sola");
+    setTimeout(caricaAggiornamenti, 300);
+  } catch (e) { toast(e.message, true); }
+}
+$("#aggInstalla").addEventListener("click", installaAggiornamento);
+$("#avvisoAggPulsante").addEventListener("click", installaAggiornamento);
+$("#aggControlla").addEventListener("click", async e => {
+  const b = e.target;
+  b.disabled = true; b.textContent = "Controllo…";
+  try { disegnaAggiornamenti(await api("/api/aggiornamenti/controlla", {})); }
+  catch (err) { toast(err.message, true); }
+  b.disabled = false; b.textContent = "Controlla ora";
+});
+
+/* ---------- avvio ---------- */
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { aggiornaStato(); carica(vista); } });
+aggiornaStato();
+caricaPanoramica();
+setInterval(() => { if (!document.hidden) aggiornaStato(); }, 1000);
+</script>
+</body>
+</html>
