@@ -1,5 +1,11 @@
 # Novità di Dettami
 
+## 1.4.0
+
+- Dettami arriva su Mac (beta, Mac con processore Intel): stessa dettatura, riscrittura e dashboard, con Option destro come tasto e l'icona nella barra dei menu.
+- Su Mac l'installer non chiede la password, la pillola funziona anche sulle app a tutto schermo e gli aggiornamenti arrivano da soli come su Windows.
+- La dashboard mostra il nome del tasto giusto per il tuo computer.
+
 ## 1.3.0
 
 - Nuovo nome: Dettatura diventa Dettami. L'installer porta da solo chiave, impostazioni, dizionario e cronologia dalla vecchia versione e la toglie.

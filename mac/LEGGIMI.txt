@@ -1,0 +1,76 @@
+DETTAMI PER MAC (beta, Mac con processore Intel)
+================================================
+
+Dettatura vocale con AI, gratis: tieni premuto Option destro, parli, rilasci
+e il testo compare già scritto bene dove c'è il cursore, in qualsiasi app.
+
+
+INSTALLARE
+----------
+1. Fai doppio clic su "Installa Dettami.command".
+
+   Se il Mac dice che non può aprirlo perché lo sviluppatore non è
+   identificato (Dettami non è firmata da Apple), hai due strade:
+
+   a) Apri Impostazioni di Sistema → Privacy e sicurezza, scorri in basso
+      e premi "Apri comunque" accanto a "Installa Dettami.command".
+      (Su macOS più vecchi: tasto destro sul file → Apri → Apri.)
+
+   b) Oppure apri il Terminale (Applicazioni → Utility → Terminale),
+      scrivi  bash  seguito da uno spazio, trascina dentro il file
+      "Installa Dettami.command" e premi Invio.
+
+2. Si apre una finestra del Terminale che installa tutto da sola
+   (in ~/Applications, nessuna password da amministratore).
+
+3. Quando te lo chiede, incolla la tua chiave Groq gratuita:
+   si crea su https://console.groq.com/keys (basta registrarsi, niente carta).
+   Ognuno deve usare la propria chiave.
+
+
+I PERMESSI (una volta sola)
+---------------------------
+Al primo avvio macOS chiede tre permessi. Senza questi Dettami non può
+sentirti, leggere il tasto o scrivere il testo:
+
+  • Microfono            premi "Consenti"
+  • Accessibilità         Impostazioni di Sistema → Privacy e sicurezza →
+                          Accessibilità → attiva "Dettami"
+  • Monitoraggio input    stessa pagina → Monitoraggio input → attiva "Dettami"
+
+Quando li hai attivati, Dettami si riapre da sola. Se non succede: icona di
+Dettami nella barra in alto → Esci, poi riaprila da Applicazioni.
+Per ricontrollarli: menu di Dettami → Permessi di macOS.
+
+
+COME SI USA
+-----------
+  Tieni premuto Option destro (⌥), parla, rilascia → il testo viene scritto
+  Doppio tocco di Option destro → mani libere (un altro tocco per finire)
+  Shift mentre detti → il testo viene tradotto (lingua scelta dal menu)
+  Esc mentre detti → annulla
+
+L'icona di Dettami è nella barra in alto, accanto all'orologio: da lì apri
+la dashboard (statistiche, cronologia, dizionario, impostazioni).
+Se Dettami è già aperta, riaprirla da Applicazioni non fa niente: usa l'icona in alto.
+
+Il tasto si cambia dalla dashboard: Option destro, Command destro, Fn,
+Control destro o F13-F19. Se scegli Fn, in Impostazioni di Sistema →
+Tastiera imposta "Premi il tasto 🌐 per" su "Non fare nulla".
+
+
+AGGIORNARE E DISINSTALLARE
+--------------------------
+Dettami si aggiorna da sola (aggiornamenti firmati, da GitHub).
+Per reinstallarla o ripararla rilancia "Installa Dettami.command":
+chiave, impostazioni e cronologia restano.
+
+Per toglierla: menu di Dettami → Disinstalla Dettami…, oppure doppio clic su
+"Disinstalla Dettami.command". Toglie app, impostazioni, chiave e cronologia.
+
+
+PROBLEMI
+--------
+Non scrive niente quando rilascio il tasto  → controlla i permessi (sopra).
+"Non ho sentito niente"                      → controlla il permesso Microfono.
+Segnalazioni: https://github.com/albykeg/dettami/issues

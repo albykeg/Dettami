@@ -252,7 +252,7 @@ select, input[type="text"] { padding: 7px 10px; border: 1px solid var(--filo); b
         <button class="pulsante primario" id="avvisoAggPulsante">Aggiorna ora</button>
       </div>
       <h1 id="frase">Oggi hai dettato <span class="cifra" id="paroleOggi">0</span> parole.</h1>
-      <p class="sotto" id="risparmio">Tieni premuto Ctrl destro e parla: le parole che detti compariranno qui.</p>
+      <p class="sotto" id="risparmio">Tieni premuto il tasto di dettatura e parla: le parole che detti compariranno qui.</p>
 
       <figure class="onda">
         <div class="barre" id="barre" role="img" aria-label="Parole dettate al giorno"></div>
@@ -390,7 +390,7 @@ select, input[type="text"] { padding: 7px 10px; border: 1px solid var(--filo); b
         <legend>Microfono e suoni</legend>
         <div class="campo"><label for="i-mic">Microfono</label><select id="i-mic" data-imp="microfono"></select></div>
         <div class="campo"><label for="i-suoni">Suoni di inizio e fine</label><input type="checkbox" class="interruttore" role="switch" id="i-suoni" data-imp="suoni"></div>
-        <div class="campo"><label for="i-sempre">Microfono sempre pronto<small>Nessun ritardo all'inizio, ma Windows mostra sempre l'icona del microfono in uso.</small></label><input type="checkbox" class="interruttore" role="switch" id="i-sempre" data-imp="microfono_sempre_aperto"></div>
+        <div class="campo"><label for="i-sempre">Microfono sempre pronto<small>Nessun ritardo all'inizio, ma l'icona del microfono in uso resta sempre accesa.</small></label><input type="checkbox" class="interruttore" role="switch" id="i-sempre" data-imp="microfono_sempre_aperto"></div>
         <div class="campo"><span class="etichetta">Prova il microfono<small>Registra 4 secondi e ti mostra cosa ha capito.</small></span><button class="pulsante" id="prova">Avvia la prova</button></div>
         <div class="esito" id="esitoProva" hidden></div>
       </fieldset>
@@ -409,7 +409,7 @@ select, input[type="text"] { padding: 7px 10px; border: 1px solid var(--filo); b
 
       <fieldset class="gruppo">
         <legend>Avvio</legend>
-        <div class="campo"><label for="i-avvio">Avvia Dettami con Windows</label><input type="checkbox" class="interruttore" role="switch" id="i-avvio"></div>
+        <div class="campo"><label for="i-avvio" id="etichettaAvvio">Avvia Dettami con Windows</label><input type="checkbox" class="interruttore" role="switch" id="i-avvio"></div>
       </fieldset>
 
       <fieldset class="gruppo">
@@ -511,9 +511,11 @@ const TESTI_STATO = {
   pronto: "Pronta", ascolto: "Ti sto ascoltando", traduci: "Ascolto e traduco",
   elabora: "Sto scrivendo", errore: "Manca la chiave Groq",
 };
+let nomeTasto = "il tasto di dettatura";
 async function aggiornaStato() {
   try {
     const s = await api("/api/stato");
+    nomeTasto = s.tasto_nome || nomeTasto;
     $("#statoTesto").textContent = TESTI_STATO[s.stato] || "Pronta";
     $("#punto").className = "punto " + ({ ascolto: "ascolto", traduci: "ascolto", elabora: "elabora", errore: "spento" }[s.stato] || "");
     $("#statoAiuto").textContent = s.stato === "errore" ? "Inseriscila da Impostazioni." : `Tieni premuto ${s.tasto_nome} e parla.`;
@@ -561,7 +563,7 @@ async function caricaPanoramica() {
   $("#frase").firstChild.textContent = st.parole_oggi === 1 ? "Oggi hai dettato " : "Oggi hai dettato ";
   $("#frase").lastChild.textContent = st.parole_oggi === 1 ? " parola." : " parole.";
   if (st.dettature === 0) {
-    $("#risparmio").textContent = "Tieni premuto Ctrl destro e parla: le parole che detti compariranno qui.";
+    $("#risparmio").textContent = `Tieni premuto ${nomeTasto} e parla: le parole che detti compariranno qui.`;
   } else if (st.parole_oggi === 0) {
     $("#risparmio").textContent = "Ancora nessuna dettatura oggi.";
   } else {
@@ -633,6 +635,10 @@ const NOMI_APP = {
   olk: "Outlook", winword: "Word", excel: "Excel", powerpnt: "PowerPoint", claude: "Claude",
   code: "VS Code", notepad: "Blocco note", telegram: "Telegram", slack: "Slack", teams: "Teams", "ms-teams": "Teams",
   explorer: "Esplora file", windowsterminal: "Terminale",
+  "google chrome": "Chrome", safari: "Safari", mail: "Mail", messaggi: "Messaggi", messages: "Messaggi",
+  note: "Note", notes: "Note", terminal: "Terminale", iterm2: "iTerm", "microsoft word": "Word",
+  "microsoft outlook": "Outlook", "microsoft teams": "Teams", "microsoft edge": "Edge", textedit: "TextEdit",
+  "brave browser": "Brave", arc: "Arc", cursor: "Cursor", notion: "Notion",
 };
 function voce(v) {
   const app = NOMI_APP[v.app] || (v.app ? v.app.charAt(0).toUpperCase() + v.app.slice(1) : "");
@@ -665,7 +671,7 @@ async function caricaCronologia() {
   const lista = $("#lista");
   lista.replaceChildren();
   if (!voci.length) {
-    lista.append(el("p", { class: "vuoto", text: q ? "Nessuna dettatura contiene queste parole." : "Ancora nessuna dettatura. Tieni premuto Ctrl destro e parla in qualsiasi programma." }));
+    lista.append(el("p", { class: "vuoto", text: q ? "Nessuna dettatura contiene queste parole." : `Ancora nessuna dettatura. Tieni premuto ${nomeTasto} e parla in qualsiasi programma.` }));
     return;
   }
   let giorno = "", ol;
@@ -698,6 +704,7 @@ async function caricaImpostazioni() {
     else if (c.tagName === "SELECT" && !["i-tasto", "i-lingua", "i-trad", "i-mic"].includes(c.id)) c.value = v[c.dataset.imp];
   }
   $("#i-avvio").checked = impostazioni.avvio_automatico;
+  $("#etichettaAvvio").textContent = impostazioni.sistema === "mac" ? "Avvia Dettami all'accensione del Mac" : "Avvia Dettami con Windows";
   $("#chiaveMascherata").textContent = impostazioni.chiave.presente ? impostazioni.chiave.mascherata : "Nessuna chiave inserita";
   $("#cartella").textContent = impostazioni.cartella;
   disegnaParole(); disegnaScorciatoie(); disegnaLivelli();
@@ -901,8 +908,7 @@ $("#aggControlla").addEventListener("click", async e => {
 
 /* ---------- avvio ---------- */
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { aggiornaStato(); carica(vista); } });
-aggiornaStato();
-caricaPanoramica();
+aggiornaStato().finally(caricaPanoramica);  // prima lo stato: serve il nome del tasto
 setInterval(() => { if (!document.hidden) aggiornaStato(); }, 1000);
 </script>
 </body>

@@ -22,6 +22,8 @@ from pathlib import Path
 
 ATTESA_CHIUSURA = 25     # secondi per lasciar chiudere la vecchia app
 ATTESA_AVVIO = 45        # secondi entro cui la nuova app deve dire "sono partita"
+MAC = sys.platform == "darwin"
+COMANDO_OPEN = "/usr/bin/open"
 
 
 def registra(app: Path, testo: str) -> None:
@@ -78,7 +80,22 @@ def copia_sicura(sorgente: Path, destinazione: Path) -> None:
     os.replace(temporaneo, destinazione)
 
 
+def bundle_di(python: str) -> Path | None:
+    """Mac: …/Dettami.app/Contents/MacOS/Dettami -> …/Dettami.app (altrimenti None)."""
+    p = Path(python)
+    if MAC and p.parent.name == "MacOS" and p.parent.parent.name == "Contents" and p.parents[2].suffix == ".app":
+        return p.parents[2]
+    return None
+
+
 def avvia_app(app: Path, python: str, *extra: str) -> subprocess.Popen:
+    bundle = bundle_di(python)
+    if bundle is not None:
+        # su Mac l'app si apre come dal Finder: così macOS le lascia Microfono, Accessibilità e
+        # Monitoraggio input. Gli argomenti li legge da questo file (vedi mac/avvio_app.py).
+        (app / "argomenti-avvio.json").write_text(json.dumps(["--avvio", *extra]), encoding="utf-8")
+        return subprocess.Popen([COMANDO_OPEN, "-n", "-a", str(bundle)], close_fds=True,
+                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     opzioni = {}
     if os.name == "nt":
         opzioni["creationflags"] = 0x00000008 | 0x00000200  # DETACHED_PROCESS, NEW_PROCESS_GROUP
@@ -88,21 +105,41 @@ def avvia_app(app: Path, python: str, *extra: str) -> subprocess.Popen:
                             cwd=str(app), close_fds=True, **opzioni)
 
 
-def partita(app: Path, processo: subprocess.Popen, versione: str, secondi: float) -> tuple[bool, str]:
+def partita(app: Path, processo: subprocess.Popen, versione: str, secondi: float,
+            via_open: bool = False, pid_vecchio: int | None = None) -> tuple[bool, str]:
+    """
+    Aspetta avvio-ok.json dalla nuova versione. Con via_open (Mac) il processo lanciato è "open",
+    che esce subito: conta il PID scritto dall'app, purché sia vivo e non sia quello della vecchia.
+    """
     segnale = app / "avvio-ok.json"
     fine = time.monotonic() + secondi
     while time.monotonic() < fine:
         try:
             dati = json.loads(segnale.read_text(encoding="utf-8"))
-            if dati.get("versione") == versione and dati.get("pid") == processo.pid:
-                return True, ""
+            pid = dati.get("pid")
+            if dati.get("versione") == versione:
+                if pid == processo.pid:
+                    return True, ""
+                if via_open and isinstance(pid, int) and pid != pid_vecchio and processo_vivo(pid):
+                    return True, ""
         except (OSError, ValueError):
             pass
         codice = processo.poll()
-        if codice is not None:
+        if codice is not None and not via_open:
             return False, f"la nuova versione si è chiusa all'avvio (codice {codice})"
+        if via_open and codice not in (None, 0):
+            return False, f"macOS non ha aperto l'app (codice {codice})"
         time.sleep(0.3)
     return False, f"la nuova versione non è partita entro {int(secondi)} secondi"
+
+
+def pid_nuova_app(app: Path, pid_vecchio: int) -> int | None:
+    """Mac: PID della nuova copia (dal file di istanza unica), per chiuderla se non è partita bene."""
+    try:
+        pid = int((app / "istanza.lock").read_text().strip() or 0)
+    except (OSError, ValueError):
+        return None
+    return pid if pid and pid != pid_vecchio and processo_vivo(pid) else None
 
 
 def ripristina(app: Path, backup: Path, nuovi: list[str]) -> None:
@@ -145,7 +182,8 @@ def installa(app: Path, nuova: Path, pid: int, python: str, versione: str, prece
             copia_sicura(nuova / nome, app / nome)
         (app / "avvio-ok.json").unlink(missing_ok=True)
         processo = avvia_app(app, python, *extra)
-        ok, motivo = partita(app, processo, versione, attesa_avvio)
+        ok, motivo = partita(app, processo, versione, attesa_avvio,
+                             via_open=bundle_di(python) is not None, pid_vecchio=pid)
     except Exception as e:  # file bloccati, disco pieno...
         processo, ok, motivo = None, False, f"errore durante la copia: {e}"
 
@@ -162,6 +200,16 @@ def installa(app: Path, nuova: Path, pid: int, python: str, versione: str, prece
             processo.wait(5)
         except subprocess.TimeoutExpired:
             pass
+    if bundle_di(python) is not None:  # Mac: la nuova copia è partita da sola, va chiusa a mano
+        nuova_pid = pid_nuova_app(app, pid)
+        if nuova_pid:
+            import signal
+            try:
+                os.kill(nuova_pid, signal.SIGTERM)
+                if not aspetta_chiusura(nuova_pid, 5):
+                    os.kill(nuova_pid, signal.SIGKILL)
+            except OSError:
+                pass
     ripristina(app, backup, mai_esistiti)
     (app / "aggiornamento-fallito.json").write_text(
         json.dumps({"versione": versione, "precedente": precedente, "motivo": motivo}, ensure_ascii=False),

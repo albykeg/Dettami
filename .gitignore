@@ -22,3 +22,10 @@ sessione.json
 cronologia.jsonl
 cronologia-vecchia.txt
 config.esempio.toml
+
+# Mac
+istanza.lock
+argomenti-avvio.json
+riavvio-permessi.json
+versione-runtime.txt
+.DS_Store

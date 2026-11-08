@@ -341,3 +341,84 @@ def test_build_crea_manifest_firmato(tmp_path, chiavi, monkeypatch):
     nomi = zipfile.ZipFile(uscita / "dettami-app-1.3.0.zip").namelist()
     assert "config.esempio.toml" in nomi and "config.toml" not in nomi
     assert m["requisiti_sha256"] == ag.impronta_requisiti("numpy==1\n")
+
+
+# ---------------------------------------------------------------- Mac: l'app si riapre con "open"
+
+SI_BLOCCA_MAC = APP_FINTA.format(comportamento='(qui / "istanza.lock").write_text(str(os.getpid()))\ntime.sleep(60)')
+
+
+def prepara_mac(tmp_path, monkeypatch, nuova_app: str):
+    """Come su Mac: python = …/Dettami.app/Contents/MacOS/Dettami e un "open" finto che lancia l'app."""
+    app, nuova, vecchia = prepara_cartelle(tmp_path, nuova_app)
+    eseguibile = tmp_path / "Applications" / "Dettami.app" / "Contents" / "MacOS" / "Dettami"
+    eseguibile.parent.mkdir(parents=True)
+    eseguibile.write_text("")
+    finto = tmp_path / "open"
+    finto.write_text(f"""#!{sys.executable}
+import json, os, subprocess, sys
+app = os.environ["DETTAMI_APP_TEST"]
+assert sys.argv[1:3] == ["-n", "-a"] and sys.argv[3].endswith("Dettami.app"), sys.argv
+f = os.path.join(app, "argomenti-avvio.json")
+argomenti = json.load(open(f))
+os.remove(f)
+subprocess.Popen([sys.executable, os.path.join(app, "dettami.py"), *argomenti], cwd=app, start_new_session=True)
+""")
+    finto.chmod(0o755)
+    monkeypatch.setattr(aggiorna, "MAC", True)
+    monkeypatch.setattr(aggiorna, "COMANDO_OPEN", str(finto))
+    monkeypatch.setenv("DETTAMI_APP_TEST", str(app))
+    return app, nuova, vecchia, str(eseguibile)
+
+
+def test_bundle_riconosciuto_solo_su_mac(monkeypatch):
+    p = "/Users/a/Applications/Dettami.app/Contents/MacOS/Dettami"
+    assert aggiorna.bundle_di(p) is None  # qui non siamo su Mac
+    monkeypatch.setattr(aggiorna, "MAC", True)
+    assert aggiorna.bundle_di(p) == Path("/Users/a/Applications/Dettami.app")
+    assert aggiorna.bundle_di("/usr/bin/python3") is None
+
+
+def test_mac_installazione_riuscita(tmp_path, monkeypatch):
+    app, nuova, vecchia, python = prepara_mac(tmp_path, monkeypatch, PARTE)
+    try:
+        assert aggiorna.installa(app, nuova, vecchia.pid, python, "1.3.1", "1.3.0", attesa_avvio=10)
+        assert (app / "versione.txt").read_text().strip() == "1.3.1"
+        assert "1.3.1 --avvio --dopo-aggiornamento 1.3.0" in (app / "avvii.log").read_text()
+        assert not (app / "argomenti-avvio.json").exists()
+    finally:
+        termina_figli(app)
+
+
+def test_mac_se_non_parte_torna_indietro_e_chiude_la_copia_bloccata(tmp_path, monkeypatch):
+    app, nuova, vecchia, python = prepara_mac(tmp_path, monkeypatch, SI_BLOCCA_MAC)
+    try:
+        assert not aggiorna.installa(app, nuova, vecchia.pid, python, "1.3.1", "1.3.0", attesa_avvio=3)
+        bloccata = int((app / "istanza.lock").read_text())
+        assert aggiorna.aspetta_chiusura(bloccata, 5)  # la copia nuova bloccata è stata chiusa
+        assert (app / "versione.txt").read_text().strip() == "1.3.0"
+        time.sleep(1.0)
+        assert (app / "avvii.log").read_text().splitlines()[-1].startswith("1.3.0 --avvio")
+    finally:
+        termina_figli(app)
+
+
+def test_manifest_di_un_altro_sistema_rifiutato(monkeypatch):
+    m = manifest_per("1.3.1", b"x", "https://x")
+    assert ag.valida_manifest(m)  # senza "sistema" = Windows (manifest della 1.3)
+    with pytest.raises(ag.ErroreAggiornamento, match="per mac"):
+        ag.valida_manifest({**m, "sistema": "mac"})
+    monkeypatch.setattr(ag, "SISTEMA", "mac")
+    assert ag.valida_manifest({**m, "sistema": "mac"})
+
+
+def test_firma_del_manifest_mac(server, chiavi):
+    radice, base = server
+    _, priv = chiavi
+    pub = {"n": priv["n"], "e": priv["e"]}
+    m = pubblica_finto(radice, base, "1.4.0", APP_V1, priv)
+    grezzo = json.dumps({**m}).encode()
+    (radice / "manifest-mac.json").write_bytes(grezzo)
+    (radice / "manifest-mac.sig").write_bytes(ag.firma(grezzo, priv))
+    (radice / "manifest.sig").write_bytes(b"\0" * 256)  # quella di Windows non deve servire
+    assert ag.controlla("1.3.0", f"{base}/manifest-mac.json", SessioneHttpLocale(), pub)["versione"] == "1.4.0"

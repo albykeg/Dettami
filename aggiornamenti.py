@@ -29,7 +29,11 @@ import zipfile
 from pathlib import Path
 
 REPO = "albykeg/dettami"
-URL_MANIFEST = f"https://github.com/{REPO}/releases/latest/download/manifest.json"
+MAC = sys.platform == "darwin"
+SISTEMA = "mac" if MAC else "windows"
+# ogni sistema ha il suo manifest (stesso pacchetto dell'app, Python e librerie diversi)
+URL_MANIFEST = f"https://github.com/{REPO}/releases/latest/download/" + ("manifest-mac.json" if MAC else "manifest.json")
+FILE_REQUISITI = "requisiti-mac.txt" if MAC else "requisiti-windows.txt"
 URL_PROGETTO = f"https://github.com/{REPO}"
 URL_VERSIONI = f"https://github.com/{REPO}/releases/latest"
 
@@ -149,6 +153,8 @@ def valida_manifest(m) -> dict:
         raise ErroreAggiornamento("Dimensione del pacchetto non valida")
     if not isinstance(m.get("note", []), list):
         raise ErroreAggiornamento("Note non valide")
+    if m.get("sistema", "windows") != SISTEMA:
+        raise ErroreAggiornamento(f"Aggiornamento per {m.get('sistema')}, non per {SISTEMA}")
     return m
 
 
@@ -157,9 +163,9 @@ def controlla(versione_attuale: str, url: str = URL_MANIFEST, sessione=None,
     """Ritorna il manifest della versione più nuova (firma verificata) oppure None."""
     import requests
     sessione = sessione or requests.Session()
-    base = url.rsplit("/", 1)[0]
+    url_firma = url[:-len(".json")] + ".sig" if url.endswith(".json") else url.rsplit("/", 1)[0] + "/manifest.sig"
     dati = _scarica_limitato(sessione, url, MAX_MANIFEST, timeout)
-    sig = _scarica_limitato(sessione, base + "/manifest.sig", 4096, timeout)
+    sig = _scarica_limitato(sessione, url_firma, 4096, timeout)
     if not verifica_firma(dati, sig, chiave):
         raise ErroreAggiornamento("Firma dell'aggiornamento non valida: ignorato")
     try:
@@ -173,10 +179,11 @@ def richiede_installer(m: dict, cartella_app: Path) -> bool:
     """True se la nuova versione cambia Python o le librerie: serve il nuovo installer."""
     if m.get("richiede_installer"):
         return True
-    runtime = Path(cartella_app) / "python" / "versione-runtime.txt"
+    # su Windows Python è in <app>/python, su Mac dentro Dettami.app (l'installer scrive il segno in <app>)
+    runtime = Path(cartella_app) / ("versione-runtime.txt" if MAC else "python/versione-runtime.txt")
     if m.get("runtime") and runtime.exists() and runtime.read_text(encoding="utf-8").strip() != m["runtime"]:
         return True
-    req = Path(cartella_app) / "requisiti-windows.txt"
+    req = Path(cartella_app) / FILE_REQUISITI
     if m.get("requisiti_sha256") and req.exists():
         if impronta_requisiti(req.read_text(encoding="utf-8")) != m["requisiti_sha256"]:
             return True

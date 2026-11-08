@@ -5,8 +5,9 @@
 
 [tasti]
 # Tasto da TENERE PREMUTO mentre parli.
-# Esempi validi: "ctrl_r" (Ctrl destro), "alt_gr", "caps_lock", "insert",
+# Esempi validi su Windows: "ctrl_r" (Ctrl destro), "alt_gr", "caps_lock", "insert",
 #                "menu", "pause", "scroll_lock", "f8", "f9" ... "f24"
+# Su Mac: "alt_r" (Option destro), "cmd_r" (Command destro), "fn", "ctrl_r", "f13" ... "f19"
 dettatura = "ctrl_r"
 
 # Doppio tocco veloce del tasto = modalità mani libere
@@ -71,8 +72,8 @@ solo_stessa_finestra = true   # se cambi finestra mentre elabora, mette il testo
 
 
 [audio]
-microfono = ""                # vuoto = microfono predefinito di Windows; oppure parte del nome, es. "Headset" o "Realtek"
-microfono_sempre_aperto = false   # true = zero ritardo all'avvio, ma Windows mostra sempre l'icona del microfono attivo
+microfono = ""                # vuoto = microfono predefinito del sistema; oppure parte del nome, es. "Headset" o "Realtek"
+microfono_sempre_aperto = false   # true = zero ritardo all'avvio, ma l'icona del microfono attivo resta sempre accesa
 coda_ms = 150                 # continua a registrare un attimo dopo il rilascio, per non tagliare l'ultima parola
 soglia_silenzio = 200         # alzala se registra rumore di fondo, abbassala se non ti sente (vedi prova.bat)
 durata_massima_min = 15
@@ -101,10 +102,12 @@ dizionario = ["WhatsApp", "PowerPoint", "Excel", "ChatGPT", "Claude"]
 [stili]
 # Lo stile si sceglie in base al programma o al titolo della finestra in cui stai scrivendo.
 # Parole cercate (in minuscolo). Vince il primo che corrisponde, altrimenti "normale".
-chat    = ["whatsapp", "telegram", "messenger", "instagram", "slack", "discord", "teams", "signal"]
-email   = ["outlook", "thunderbird", "gmail", "posta in arrivo", "- posta"]
+# Su Mac vengono confrontati anche il nome dell'app e il suo identificativo (es. com.apple.mail).
+chat    = ["whatsapp", "telegram", "messenger", "instagram", "slack", "discord", "teams", "signal", "mobilesms"]
+email   = ["outlook", "thunderbird", "gmail", "posta in arrivo", "- posta", "com.apple.mail", "readdle.smartemail"]
 prompt  = ["claude", "chatgpt", "gemini", "perplexity", "copilot", "grok", "mistral"]
-tecnico = ["code.exe", "cursor", "windowsterminal", "powershell", "cmd.exe", "notepad++", "pycharm", "sublime"]
+tecnico = ["code.exe", "cursor", "windowsterminal", "powershell", "cmd.exe", "notepad++", "pycharm", "sublime",
+           "com.microsoft.vscode", "com.apple.terminal", "iterm2", "com.apple.dt.xcode", "dev.warp", "ghostty", "jetbrains"]
 
 
 [istruzioni_stile]

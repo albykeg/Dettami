@@ -17,6 +17,7 @@ import os
 import secrets
 import shutil
 import subprocess
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -192,6 +193,9 @@ def trova_edge() -> str | None:
 
 def apri_finestra(url: str) -> None:
     """Apre la dashboard in una finestra a sé (Edge in modalità app), altrimenti nel browser."""
+    if sys.platform == "darwin":
+        import sistema_mac
+        return sistema_mac.apri_finestra_dashboard(url)
     edge = trova_edge()
     if edge:
         try:

@@ -1,10 +1,10 @@
 """
-Dettami — dettatura vocale con AI per Windows, in qualsiasi campo di testo.
+Dettami — dettatura vocale con AI per Windows e Mac, in qualsiasi campo di testo.
 
-  Tieni premuto CTRL DESTRO e parla, poi rilascia: il testo ripulito viene
-  inserito dove si trova il cursore, in qualunque programma.
+  Tieni premuto CTRL DESTRO (su Mac OPTION DESTRO) e parla, poi rilascia: il testo
+  ripulito viene inserito dove si trova il cursore, in qualunque programma.
 
-  Doppio tocco di CTRL DESTRO  -> mani libere (un altro tocco per finire)
+  Doppio tocco del tasto        -> mani libere (un altro tocco per finire)
   SHIFT mentre registri          -> il testo viene tradotto
   ESC mentre registri            -> annulla
 
@@ -37,6 +37,10 @@ from motore import CARTELLA, FREQ
 
 log = logging.getLogger("dettami")
 WINDOWS = sys.platform == "win32"
+MAC = sys.platform == "darwin"
+if MAC:
+    import sistema_mac
+INCOLLA = "⌘V" if MAC else "Ctrl+V"
 
 FILE_CONFIG = CARTELLA / "config.toml"
 FILE_ENV = CARTELLA / ".env"
@@ -62,7 +66,7 @@ ALIAS_TASTI = {
     "bloc scorr": "scroll_lock",
 }
 MODIFICATORI = {"ctrl", "ctrl_l", "ctrl_r", "shift", "shift_l", "shift_r",
-                "alt", "alt_l", "alt_r", "alt_gr", "cmd", "cmd_l", "cmd_r"}
+                "alt", "alt_l", "alt_r", "alt_gr", "cmd", "cmd_l", "cmd_r", "fn"}
 
 
 def normalizza_nome(nome: str) -> str:
@@ -115,10 +119,16 @@ if WINDOWS:
 
 
 def finestra_in_primo_piano() -> int | None:
+    if MAC:
+        return sistema_mac.app_in_primo_piano()[0]
     return _user32.GetForegroundWindow() if WINDOWS else None
 
 
 def finestra_attiva() -> motore.Contesto:
+    if MAC:  # su Mac "hwnd" è il PID dell'app; nel titolo c'è anche l'identificativo (com.apple.mail…)
+        pid, nome, identificativo = sistema_mac.app_in_primo_piano()
+        titolo = f"{sistema_mac.titolo_finestra(pid)} {identificativo}".strip()
+        return motore.Contesto(hwnd=pid, processo=nome.lower(), titolo=titolo)
     if not WINDOWS:
         return motore.Contesto()
     try:
@@ -147,12 +157,16 @@ _mutex = None
 
 def istanza_unica() -> bool:
     global _mutex
+    if MAC:
+        return sistema_mac.istanza_unica(CARTELLA)
     _mutex = _kernel32.CreateMutexW(None, False, "Local\\Dettami_istanza_unica")
     return ctypes.get_last_error() != 183  # ERROR_ALREADY_EXISTS
 
 
 def apri_file(percorso) -> None:
     try:
+        if MAC:
+            return sistema_mac.apri(percorso)
         if str(percorso).endswith((".toml", ".txt", ".log", ".env")):
             subprocess.Popen(["notepad.exe", str(percorso)])
         else:
@@ -162,12 +176,16 @@ def apri_file(percorso) -> None:
 
 
 def collegamento_avvio() -> str:
+    if MAC:
+        return str(sistema_mac.AGENTE)
     return os.path.join(os.environ.get("APPDATA", ""), r"Microsoft\Windows\Start Menu\Programs\Startup",
                         "Dettami.lnk")
 
 
 def imposta_avvio_automatico(attivo: bool) -> bool:
     """Crea o toglie il collegamento in Esecuzione automatica. Ritorna lo stato finale."""
+    if MAC:
+        return sistema_mac.imposta_avvio_automatico(attivo)
     lnk = collegamento_avvio()
     if not attivo:
         try:
@@ -268,7 +286,7 @@ def trova_microfono(nome: str):
     for i, d in enumerate(sd.query_devices()):
         if d["max_input_channels"] > 0 and nome.lower() in d["name"].lower():
             return i
-    log.warning("Microfono '%s' non trovato: uso quello predefinito di Windows", nome)
+    log.warning("Microfono '%s' non trovato: uso quello predefinito", nome)
     return None
 
 
@@ -460,8 +478,14 @@ class App:
         self.reg: Registratore | None = None
         self._reg_in_uso: Registratore | None = None
         self._anteprima_fino = 0.0
-        self.indicatore = indicatore.Indicatore(cfg["indicatore"]["attivo"], cfg["indicatore"]["posizione"],
-                                                livelli=self._livelli_indicatore, al_clic=self._copia_da_pillola)
+        if MAC:
+            import indicatore_mac
+            self.indicatore = indicatore_mac.IndicatoreMac(cfg["indicatore"]["attivo"], cfg["indicatore"]["posizione"],
+                                                           livelli=self._livelli_indicatore,
+                                                           al_clic=self._copia_da_pillola)
+        else:
+            self.indicatore = indicatore.Indicatore(cfg["indicatore"]["attivo"], cfg["indicatore"]["posizione"],
+                                                    livelli=self._livelli_indicatore, al_clic=self._copia_da_pillola)
         self.lingua_trad = cfg["ai"]["lingua_traduzione"]
         self.ai_attiva = cfg["ai"]["attiva"]
         self.contatore = 0  # aumenta a ogni dettatura: la dashboard sa quando aggiornarsi
@@ -496,8 +520,17 @@ class App:
         )
 
     def _imposta_tasti(self):
-        from pynput import keyboard
         t = self.cfg["tasti"]
+        if MAC:
+            self.tasto = normalizza_nome(t["dettatura"])
+            if self.tasto not in sistema_mac.TASTI_DETTATURA:
+                log.warning("Tasto '%s' non usabile su Mac: uso alt_r", t["dettatura"])
+                self.notifica(f"Tasto '{t['dettatura']}' non usabile su Mac: uso Option destro.")
+                self.tasto = "alt_r"
+            self.tasto_traduci = normalizza_nome(t["modificatore_traduzione"])
+            self.tasto_annulla = normalizza_nome(t["annulla"])
+            return
+        from pynput import keyboard
         self.tasto = normalizza_nome(t["dettatura"])
         if self.tasto not in keyboard.Key.__members__:
             log.warning("Tasto '%s' non riconosciuto: uso ctrl_r", t["dettatura"])
@@ -554,9 +587,12 @@ class App:
         self.icon.run(setup=self._setup)
 
     def _setup(self, icon):
-        icon.visible = True
-        from pynput import keyboard
-        self.tastiera = keyboard.Controller()
+        if MAC:
+            sistema_mac.sul_thread_principale(setattr, icon, "visible", True)
+        else:
+            icon.visible = True
+            from pynput import keyboard
+            self.tastiera = keyboard.Controller()
         try:
             self.reg = Registratore(self.cfg)
         except Exception as e:
@@ -564,8 +600,11 @@ class App:
             self.notifica(f"Microfono non disponibile: {e}")
         threading.Thread(target=self._ciclo_eventi, daemon=True, name="eventi").start()
         threading.Thread(target=self._ciclo_lavori, daemon=True, name="lavori").start()
-        self.listener = keyboard.Listener(on_press=self._on_press, on_release=self._on_release)
-        self.listener.daemon = True
+        if MAC:  # tastiera letta direttamente da macOS (vedi sistema_mac.AscoltoTasti)
+            self.listener = sistema_mac.AscoltoTasti(self._on_press, self._on_release)
+        else:
+            self.listener = keyboard.Listener(on_press=self._on_press, on_release=self._on_release)
+            self.listener.daemon = True
         self.listener.start()
         threading.Thread(target=self.client.scalda, daemon=True).start()
         try:
@@ -585,6 +624,8 @@ class App:
             self.indicatore.mostra("info", f"Dettami è pronta: tieni premuto {self._nome_tasto()}")
         if self.apri_dashboard:
             self.apri_finestra_dashboard()
+        if MAC:
+            self._controlla_permessi_mac()
         self._esito_aggiornamento_precedente()
         threading.Thread(target=self._ciclo_aggiornamenti, daemon=True, name="aggiornamenti").start()
         log.info("Avviata %s (tasto: %s)", motore.VERSIONE, self.tasto)
@@ -612,6 +653,8 @@ class App:
 
     @staticmethod
     def _nome(key) -> str:
+        if isinstance(key, str):  # su Mac arrivano già come nomi
+            return key
         from pynput import keyboard
         return key.name if isinstance(key, keyboard.Key) else "carattere"
 
@@ -792,6 +835,12 @@ class App:
         soglia = self.cfg["audio"]["soglia_silenzio"]
         if not motore.c_e_voce(audio, soglia):
             log.info("Nessuna voce rilevata (livello %.0f, soglia %s)", motore.livello(audio), soglia)
+            if MAC and sistema_mac.stato_microfono() == "negato":  # macOS manda solo silenzio
+                self._esito_a_schermo("errore", "Microfono bloccato da macOS")
+                self.notifica_una_volta("macOS non lascia usare il microfono a Dettami: attivalo in "
+                                        "Impostazioni di Sistema → Privacy e sicurezza → Microfono.", 120)
+                sistema_mac.apri_impostazioni("microfono")
+                return
             self._esito_a_schermo("silenzio", "Non ho sentito niente")
             return
         if not self.api_key:
@@ -814,7 +863,7 @@ class App:
         n = len(r.testo.split())
         parole = "1 parola" if n == 1 else f"{n} parole"
         if esito == "appunti":
-            self._esito_a_schermo("fatto", "Negli appunti: premi Ctrl+V")
+            self._esito_a_schermo("fatto", f"Negli appunti: premi {INCOLLA}")
         elif r.tradotto:
             self._esito_a_schermo("fatto", f"Tradotto: {parole}", **self._con_pulsante_copia(r.testo))
         else:
@@ -832,7 +881,7 @@ class App:
         if r.avviso:
             self.notifica_una_volta(r.avviso)
         if esito == "appunti":
-            self.notifica("Hai cambiato finestra: il testo è negli appunti, premi Ctrl+V dove vuoi.")
+            self.notifica(f"Hai cambiato finestra: il testo è negli appunti, premi {INCOLLA} dove vuoi.")
 
     # ----- inserimento del testo -----
 
@@ -847,6 +896,8 @@ class App:
             appunti_copia(testo)
             return "appunti"
         self._attendi_modificatori()
+        if MAC:
+            return self._inserisci_mac(testo, ins)
         from pynput.keyboard import Key
         self._ignora = True
         try:
@@ -870,6 +921,33 @@ class App:
             time.sleep(0.05)
             self._ignora = False
             if vecchio:  # rimette com'erano gli appunti (solo testo)
+                time.sleep(0.6)
+                if appunti_leggi() == testo:
+                    appunti_copia(vecchio)
+            return "incollato"
+        finally:
+            if self._ignora:
+                time.sleep(0.05)
+                self._ignora = False
+
+    def _inserisci_mac(self, testo: str, ins: dict) -> str:
+        self._ignora = True
+        try:
+            if ins["metodo"] == "digita":
+                righe = testo.split("\n")
+                for i, riga in enumerate(righe):
+                    if riga:
+                        sistema_mac.digita(riga)
+                    if i < len(righe) - 1:
+                        sistema_mac.a_capo_morbido()
+                return "digitato"
+            vecchio = appunti_leggi() if ins["ripristina_appunti"] else None
+            appunti_copia(testo)
+            time.sleep(0.05)
+            sistema_mac.incolla()
+            time.sleep(0.05)
+            self._ignora = False
+            if vecchio:
                 time.sleep(0.6)
                 if appunti_leggi() == testo:
                     appunti_copia(vecchio)
@@ -931,6 +1009,8 @@ class App:
 
     def notifica(self, testo: str):
         log.info("Notifica: %s", testo)
+        if MAC:
+            return sistema_mac.notifica(testo)
         try:
             if self.icon is not None:
                 self.icon.notify(testo, "Dettami")
@@ -945,6 +1025,13 @@ class App:
         return "pronto" if self.api_key else "errore"
 
     def _aggiorna_icona(self):
+        if MAC:  # AppKit vuole il thread principale
+            if self.icon is not None:
+                sistema_mac.sul_thread_principale(self._aggiorna_icona_ora)
+            return
+        self._aggiorna_icona_ora()
+
+    def _aggiorna_icona_ora(self):
         if self.icon is None:
             return
         try:
@@ -1004,8 +1091,10 @@ class App:
             I("Ricarica impostazioni", self._ricarica),
             I("Prova microfono", self._prova_microfono),
             I("Imposta API key", self._imposta_chiave),
+            I("Permessi di macOS", lambda icon, item: self._controlla_permessi_mac(manuale=True), visible=MAC),
             I("Apri log", lambda icon, item: apri_file(FILE_LOG)),
             pystray.Menu.SEPARATOR,
+            I("Disinstalla Dettami…", self._disinstalla_mac, visible=MAC),
             I("Esci", self._esci),
         )
 
@@ -1033,6 +1122,9 @@ class App:
 
     def _imposta_chiave(self, icon=None, item=None):
         """Apre la finestra per incollare e verificare la API key, poi la ricarica."""
+        if MAC:
+            threading.Thread(target=self._chiave_mac, daemon=True).start()
+            return
         script = CARTELLA / "chiave.ps1"
         if not script.exists():  # ripiego: modifica a mano del file .env
             if not FILE_ENV.exists():
@@ -1057,7 +1149,116 @@ class App:
 
         threading.Thread(target=attendi, daemon=True).start()
 
+    def _chiave_mac(self):
+        """Mac: finestra di macOS per incollare la chiave, verificata con Groq prima di salvarla."""
+        if not self.api_key:
+            sistema_mac.apri_indirizzo("https://console.groq.com/keys")
+        messaggio = ("Incolla la tua chiave Groq (inizia con gsk_).\n\nSe non ce l'hai: su console.groq.com/keys "
+                     "accedi gratis, premi «Create API Key» e copiala.")
+        for _ in range(3):
+            chiave = sistema_mac.chiedi_testo("Chiave Groq per Dettami", messaggio, "Verifica e salva")
+            if not chiave:
+                return
+            chiave = chiave.strip().strip('"').strip("'")
+            ok, esito = motore.ClientAI(self.cfg, chiave).verifica_chiave()
+            if ok:
+                FILE_ENV.write_text(f"GROQ_API_KEY={chiave}\n", encoding="utf-8")
+                try:
+                    os.chmod(FILE_ENV, 0o600)
+                except OSError:
+                    pass
+                self.api_key = chiave
+                self.client = self._nuovo_client()
+                self._aggiorna_icona()
+                self.notifica(f"Chiave salvata. Tieni premuto {self._nome_tasto()} e parla.")
+                return
+            messaggio = f"{esito}. Controlla di averla copiata tutta e riprova."
+
+    def _controlla_permessi_mac(self, manuale: bool = False):
+        """Mac: senza Accessibilità e Monitoraggio input il tasto non funziona. Li chiede e aspetta."""
+        try:
+            stato = sistema_mac.permessi()
+            da_dare = sistema_mac.mancanti(stato)
+            self.listener.pronto.wait(3)
+            if self.listener.errore and "monitoraggio" not in da_dare:
+                da_dare.append("monitoraggio")
+            microfono = sistema_mac.stato_microfono()
+            if microfono == "non_deciso":  # fa comparire subito la richiesta del microfono
+                threading.Thread(target=self._chiedi_microfono_mac, daemon=True).start()
+            elif microfono == "negato":
+                self.notifica("macOS non lascia usare il microfono a Dettami: attivalo in "
+                              "Impostazioni di Sistema → Privacy e sicurezza → Microfono.")
+                if manuale:
+                    sistema_mac.apri_impostazioni("microfono")
+            if not da_dare:
+                if manuale:
+                    self.notifica("Dettami ha tutti i permessi che le servono.")
+                return
+            sistema_mac.chiedi_permessi()
+            nomi = " e ".join(sistema_mac.NOMI_PERMESSI[k] for k in da_dare)
+            self.indicatore.mostra("info", f"Consenti a Dettami: {nomi}", durata=None)
+            self.notifica(f"Per leggere il tasto e scrivere il testo, Dettami ha bisogno di: {nomi}. Attivali in "
+                          "Impostazioni di Sistema → Privacy e sicurezza: poi Dettami si riapre da sola.")
+            sistema_mac.apri_impostazioni(da_dare[0])
+            threading.Thread(target=self._attendi_permessi_mac, args=(da_dare,), daemon=True).start()
+        except Exception:
+            log.exception("Controllo permessi macOS")
+
+    def _chiedi_microfono_mac(self):
+        try:
+            reg = self.reg or Registratore(self.cfg)
+            reg.avvia()
+            time.sleep(0.4)
+            reg.ferma(scarta=True)
+        except Exception:
+            log.exception("Richiesta microfono")
+
+    def _attendi_permessi_mac(self, da_dare: list[str]):
+        fine = time.monotonic() + 30 * 60
+        aperti = {da_dare[0]}
+        while time.monotonic() < fine:
+            time.sleep(1.5)
+            stato = sistema_mac.permessi()
+            if "monitoraggio" in da_dare:
+                stato["monitoraggio"] = sistema_mac.puo_ascoltare()
+            ancora = [k for k in da_dare if not stato.get(k)]
+            if ancora and ancora[0] not in aperti:  # il primo è fatto: apre il pannello del secondo
+                aperti.add(ancora[0])
+                sistema_mac.apri_impostazioni(ancora[0])
+            if ancora:
+                continue
+            ultimo = motore.leggi_json(CARTELLA / "riavvio-permessi.json", {})
+            if isinstance(ultimo, dict) and time.time() - float(ultimo.get("ts", 0)) < 120:
+                self.indicatore.mostra("info", "Esci da Dettami e riaprila", durata=8)
+                self.notifica("Permessi concessi. Per usarli macOS vuole che chiudi Dettami (menu → Esci) e la riapri.")
+                return
+            motore.scrivi_json(CARTELLA / "riavvio-permessi.json", {"ts": time.time()})
+            self.indicatore.mostra("fatto", "Permessi concessi: riapro Dettami")
+            time.sleep(1.2)
+            sistema_mac.riapri_dopo(CARTELLA, ["--avvio"])
+            sistema_mac.sul_thread_principale(self._esci, self.icon, None)
+            return
+        self.indicatore.nascondi_se("info")
+
+    def _disinstalla_mac(self, icon=None, item=None):
+        def fai():
+            if not sistema_mac.conferma("Disinstalla Dettami",
+                                        "Tolgo Dettami da questo Mac, con impostazioni, chiave Groq e cronologia.",
+                                        "Disinstalla"):
+                return
+            script = CARTELLA / "disinstalla.command"
+            if not script.exists():
+                sistema_mac.avviso("Disinstallazione", "Manca disinstalla.command: lancialo dalla cartella "
+                                   "dell'installer, oppure trascina Dettami dal Finder nel Cestino.")
+                return
+            subprocess.Popen(["/bin/bash", str(script), "--senza-conferma"], start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            sistema_mac.sul_thread_principale(self._esci, self.icon, None)
+        threading.Thread(target=fai, daemon=True).start()
+
     def _prova_microfono(self, icon=None, item=None):
+        if MAC:  # la prova del microfono su Mac è nella dashboard
+            return self.apri_finestra_dashboard()
         python = os.path.join(os.path.dirname(sys.executable), "python.exe")
         if not os.path.exists(python):
             python = sys.executable
@@ -1114,7 +1315,10 @@ class App:
             if self.server:
                 self.server.chiudi()
         finally:
-            icon.stop()
+            if MAC and threading.current_thread() is not threading.main_thread():
+                sistema_mac.sul_thread_principale(icon.stop)
+            else:
+                icon.stop()
 
     # ===================================================================== #
     #  Aggiornamenti automatici
@@ -1298,6 +1502,7 @@ class App:
             "parole_oggi": self.parole_oggi,
             "aggiornamento": self._versione_disponibile(),
             "aggiornamento_in_corso": self.agg["stato"] == "installazione",
+            "sistema": "mac" if MAC else "windows",
         }
 
     def statistiche(self) -> dict:
@@ -1330,7 +1535,7 @@ class App:
                 "tasti": [{"valore": k, "nome": v} for k, v in motore.TASTI_AMMESSI.items()],
                 "lingue": [{"valore": k, "nome": v} for k, v in motore.LINGUE_PARLATE.items()],
                 "lingue_traduzione": [{"valore": x, "nome": x.capitalize()} for x in self.cfg["ai"]["lingue_traduzione"]],
-                "microfoni": [{"valore": "", "nome": "Predefinito di Windows"}] +
+                "microfoni": [{"valore": "", "nome": "Predefinito di " + ("macOS" if MAC else "Windows")}] +
                              [{"valore": m, "nome": m} for m in microfoni],
             },
             "chiave": {"presente": bool(chiave),
@@ -1338,6 +1543,7 @@ class App:
             "avvio_automatico": os.path.exists(collegamento_avvio()),
             "cartella": str(CARTELLA),
             "versione": motore.VERSIONE,
+            "sistema": "mac" if MAC else "windows",
         }
 
     def salva_impostazioni(self, dati: dict) -> dict:
@@ -1389,7 +1595,10 @@ class App:
         indirizzi = {"consumi": "https://console.groq.com/settings/limits",
                      "progetto": aggiornamenti.URL_PROGETTO, "setup": aggiornamenti.URL_VERSIONI}
         if cosa in indirizzi:
-            os.startfile(indirizzi[cosa])  # type: ignore[attr-defined]
+            if MAC:
+                sistema_mac.apri_indirizzo(indirizzi[cosa])
+            else:
+                os.startfile(indirizzi[cosa])  # type: ignore[attr-defined]
         elif cosa in destinazioni:
             apri_file(destinazioni[cosa])
         else:
@@ -1505,6 +1714,8 @@ def main():
         log.error(str(e))
         if WINDOWS:
             ctypes.windll.user32.MessageBoxW(None, str(e), "Dettami", 0x10)
+        elif MAC:
+            sistema_mac.avviso("Dettami", str(e))
         return
     api_key = motore.leggi_api_key(FILE_ENV)
 
@@ -1516,8 +1727,8 @@ def main():
         if args.pausa:
             input("\nPremi Invio per chiudere...")
         return
-    if not WINDOWS:
-        print("Questa app è pensata per Windows. Su altri sistemi puoi usare: python dettami.py --prova")
+    if not (WINDOWS or MAC):
+        print("Questa app è pensata per Windows e Mac. Su altri sistemi puoi usare: python dettami.py --prova")
         return
     if not istanza_unica():
         # già aperta: cliccare l'icona di Dettami apre la sua dashboard

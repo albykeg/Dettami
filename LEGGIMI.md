@@ -1,10 +1,12 @@
 # Dettami
 
-Dettatura vocale con AI per Windows: parli, e in **qualsiasi campo di testo** (Word, WhatsApp, browser, Claude, Outlook, terminale, Esplora file…) compare il testo già ripulito: niente "ehm", autocorrezioni applicate, punteggiatura ed elenchi a posto.
+Dettatura vocale con AI per Windows e Mac: parli, e in **qualsiasi campo di testo** (Word, WhatsApp, browser, Claude, Outlook, terminale, Esplora file…) compare il testo già ripulito: niente "ehm", autocorrezioni applicate, punteggiatura ed elenchi a posto.
+
+> **Su Mac** (beta, processore Intel) si installa con `Installa Dettami.command` dallo zip `Dettami-Mac`: le istruzioni, compresi i permessi da dare a macOS, sono nel suo `LEGGIMI.txt`. Il tasto è **Option destro (⌥)** invece di Ctrl destro, l'icona è nella barra dei menu in alto e si incolla con ⌘V. Tutto il resto di questa guida vale uguale.
 
 ---
 
-## Installazione (2 minuti, senza permessi di amministratore)
+## Installazione su Windows (2 minuti, senza permessi di amministratore)
 
 1. Tasto destro sullo zip `Dettami-Setup` → **Estrai tutto**.
 2. Doppio clic su **`Installa.bat`**. Se Windows mostra un avviso: *Ulteriori informazioni* → *Esegui comunque*.

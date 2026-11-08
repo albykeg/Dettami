@@ -11,6 +11,7 @@ import io
 import json
 import logging
 import os
+import sys
 import re
 import threading
 import time
@@ -24,7 +25,7 @@ from pathlib import Path
 import numpy as np
 import requests
 
-VERSIONE = "1.3.0"
+VERSIONE = "1.4.0"
 CARTELLA = Path(__file__).resolve().parent
 FREQ = 16000  # Hz: quello che Whisper si aspetta
 LIVELLI_RISCRITTURA = ("fedele", "chiara", "ottimizzata")
@@ -135,11 +136,16 @@ def scrivi_json(percorso: Path, dati) -> None:
 
 
 # Impostazioni modificabili dalla dashboard: nome -> (sezione, chiave, tipo, valori ammessi)
-TASTI_AMMESSI = {
+TASTI_WINDOWS = {
     "ctrl_r": "Ctrl destro", "alt_gr": "Alt Gr", "caps_lock": "Bloc Maiusc", "insert": "Ins",
     "menu": "Tasto menu", "pause": "Pausa", "scroll_lock": "Bloc Scorr",
     **{f"f{i}": f"F{i}" for i in range(1, 25)},
 }
+TASTI_MAC = {
+    "alt_r": "Option destro (⌥)", "cmd_r": "Command destro (⌘)", "fn": "Fn / 🌐", "ctrl_r": "Control destro",
+    "alt_l": "Option sinistro (⌥)", **{f"f{i}": f"F{i}" for i in range(13, 20)},
+}
+TASTI_AMMESSI = TASTI_MAC if sys.platform == "darwin" else TASTI_WINDOWS
 LINGUE_PARLATE = {"it": "Italiano", "auto": "Riconosci da sola", "en": "Inglese", "es": "Spagnolo",
                   "fr": "Francese", "de": "Tedesco", "pt": "Portoghese", "ro": "Rumeno",
                   "ar": "Arabo", "zh": "Cinese", "ru": "Russo", "uk": "Ucraino"}

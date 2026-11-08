@@ -57,8 +57,9 @@ _font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
 def _font(peso: str, dim: int):
     chiave = (peso, dim)
     if chiave not in _font_cache:
+        mac = "/System/Library/Fonts/Supplemental/Arial" + (" Bold" if peso == "semi" else "") + ".ttf"
         nomi = (["seguisb.ttf", "segoeuib.ttf"] if peso == "semi" else ["segoeui.ttf"]) + \
-               ["arial.ttf", "DejaVuSans-Bold.ttf" if peso == "semi" else "DejaVuSans.ttf"]
+               ["arial.ttf", mac, "DejaVuSans-Bold.ttf" if peso == "semi" else "DejaVuSans.ttf"]
         for n in nomi:
             try:
                 _font_cache[chiave] = ImageFont.truetype(n, dim)

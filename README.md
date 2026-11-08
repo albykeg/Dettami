@@ -1,6 +1,6 @@
 # Dettami
 
-**Dettatura vocale con AI per Windows, gratuita e open source.** Tieni premuto un tasto, parli e il testo compare già scritto bene in qualsiasi campo di testo: Word, WhatsApp, Outlook, il browser, Claude, VS Code, il terminale. Niente "ehm", le autocorrezioni vengono applicate, punteggiatura ed elenchi sono già a posto. Se vuoi, riformula anche le frasi poco chiare.
+**Dettatura vocale con AI per Windows e Mac, gratuita e open source.** Tieni premuto un tasto, parli e il testo compare già scritto bene in qualsiasi campo di testo: Word, WhatsApp, Outlook, il browser, Claude, VS Code, il terminale. Niente "ehm", le autocorrezioni vengono applicate, punteggiatura ed elenchi sono già a posto. Se vuoi, riformula anche le frasi poco chiare.
 
 Usa i modelli gratuiti di [Groq](https://console.groq.com) (Whisper per la trascrizione e modelli open per la riscrittura). Non ci sono abbonamenti e non serve una carta di credito: ognuno usa la propria chiave Groq gratuita.
 
@@ -27,9 +27,9 @@ Usa i modelli gratuiti di [Groq](https://console.groq.com) (Whisper per la trasc
 - **Indicatore a schermo.** Una pillola mostra quando ti ascolta e quando sta scrivendo; a fine dettatura ha il pulsante *Copia*.
 - **Dashboard locale.** Mostra parole dettate, tempo risparmiato, quota Groq rimasta e cronologia con ricerca. Lì gestisci anche il dizionario personale, le scorciatoie vocali e le impostazioni.
 - **Aggiornamenti automatici firmati.** Si aggiorna da sola quando non stai dettando e, se la nuova versione non parte, torna a quella di prima.
-- **Si installa senza permessi di amministratore.** Python e le librerie sono inclusi nel pacchetto e non toccano il resto del PC.
+- **Si installa senza permessi di amministratore**, su Windows e su Mac. Python e le librerie sono inclusi nel pacchetto e non toccano il resto del computer.
 
-## Installazione
+## Installazione su Windows
 
 1. Scarica **`Dettami-Setup-x.y.z.zip`** dall'[ultima versione](https://github.com/albykeg/dettami/releases/latest).
 2. Tasto destro sullo zip → **Estrai tutto**, poi doppio clic su **`Installa.bat`**. Se Windows mostra un avviso, scegli *Ulteriori informazioni* → *Esegui comunque*.
@@ -38,6 +38,17 @@ Usa i modelli gratuiti di [Groq](https://console.groq.com) (Whisper per la trasc
 Fatto: **tieni premuto Ctrl destro, parla, rilascia.** Dettami parte con Windows e si trova nel menu Start. Si disinstalla da *Impostazioni → App installate*.
 
 Requisiti: Windows 10 o 11 a 64 bit, un microfono e la connessione a internet (serve per Groq).
+
+## Installazione su Mac (beta)
+
+Per ora la versione Mac è per i **Mac con processore Intel**, da macOS 10.15 Catalina in poi. Su quelli con chip Apple funziona tramite Rosetta, ma lì non è ancora stata provata.
+
+1. Scarica **`Dettami-Mac-x.y.z.zip`** dall'[ultima versione](https://github.com/albykeg/dettami/releases/latest) e aprilo.
+2. Doppio clic su **`Installa Dettami.command`**. Dettami non è firmata da Apple, quindi la prima volta macOS la blocca. Per aprirla vai su *Impostazioni di Sistema → Privacy e sicurezza → Apri comunque*. In alternativa, nel Terminale scrivi `bash`, uno spazio, trascina dentro il file e premi Invio.
+3. Incolla la chiave Groq quando te la chiede.
+4. Al primo avvio dai a Dettami i permessi che macOS chiede: **Microfono**, **Accessibilità** e **Monitoraggio input**. Dopo, l'app si riapre da sola.
+
+Poi **tieni premuto Option destro (⌥), parla, rilascia.** L'icona è nella barra dei menu in alto. L'app si installa in `~/Applications`, senza password da amministratore. Per toglierla: menu dell'icona → *Disinstalla Dettami…*.
 
 > **Ognuno deve usare la propria chiave.** Le quote gratuite di Groq sono per account: se condividi la chiave finiscono subito per tutti.
 
@@ -61,7 +72,7 @@ Quando un modello esaurisce la quota, Dettami passa da sola al successivo.
 
 ## Come funzionano gli aggiornamenti
 
-Ogni 6 ore l'app scarica `manifest.json` e `manifest.sig` dall'ultima release di questo repository:
+Ogni 6 ore l'app scarica `manifest.json` e `manifest.sig` dall'ultima release di questo repository. Il Mac usa `manifest-mac.json` e `manifest-mac.sig`: il pacchetto dell'app è lo stesso, Python e librerie no.
 
 1. Verifica la **firma RSA-3072** del manifest con la chiave pubblica scritta nel codice (`aggiornamenti.py`). La chiave privata non è nel repository.
 2. Scarica il pacchetto dell'app e ne controlla dimensione e SHA-256 con i valori del manifest firmato.
@@ -72,7 +83,7 @@ Se una versione cambia Python o le librerie, l'app non si aggiorna da sola e pro
 
 ## Sviluppo
 
-Il codice è Python 3.11+. La logica (`motore.py`, `aggiornamenti.py`) non dipende da Windows e si testa su qualsiasi sistema:
+Il codice è Python 3.11+. La logica (`motore.py`, `aggiornamenti.py`) non dipende dal sistema e si testa ovunque:
 
 ```bash
 pip install -r requirements.txt pytest cryptography
@@ -82,14 +93,16 @@ python dettami.py --prova      # prova microfono e API dalla console
 
 | File | Cosa contiene |
 |---|---|
-| `dettami.py` | App Windows: tasto globale, microfono, icona, inserimento del testo, dati per la dashboard |
+| `dettami.py` | L'app: tasto globale, microfono, icona, inserimento del testo, dati per la dashboard |
 | `motore.py` | Trascrizione, prompt di riscrittura, riserva tra modelli, logica del tasto. Contiene `VERSIONE` |
-| `indicatore.py` | La pillola a schermo (finestra Windows trasparente disegnata con Pillow) |
+| `indicatore.py` | La pillola a schermo: disegno con Pillow e finestra trasparente su Windows |
+| `sistema_mac.py`, `indicatore_mac.py` | Mac: tasto via Quartz, incolla con Cmd+V, permessi, avvio al login, pillola con AppKit |
 | `dashboard.py`, `dashboard.html` | Server locale della dashboard e la pagina |
 | `aggiornamenti.py`, `aggiorna.py` | Controllo, verifica e installazione degli aggiornamenti, con ritorno alla versione precedente |
 | `config.toml` | Impostazioni predefinite (stili, modelli, prompt per stile) |
 | `installer/` | Installazione e disinstallazione per Windows (PowerShell, per utente) |
-| `costruisci_pacchetto.py` | Crea l'installer e il pacchetto di aggiornamento firmato |
+| `mac/` | Installer e disinstallazione per Mac e avvio di `Dettami.app` (`avvio_app.py`) |
+| `costruisci_pacchetto.py` | Crea gli installer (Windows e Mac) e il pacchetto di aggiornamento firmato |
 
 ### Pubblicare una versione
 
