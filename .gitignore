@@ -29,3 +29,6 @@ argomenti-avvio.json
 riavvio-permessi.json
 versione-runtime.txt
 .DS_Store
+
+# output delle prove (prove/)
+prove/_output/
