@@ -707,3 +707,52 @@ def test_impostazione_pulsante_copia(tmp_path):
     motore.salva_impostazioni(tmp_path / "imp.json", {"pulsante_copia": False}, cfg)
     cfg2 = motore.carica_config(motore.CARTELLA / "config.toml", tmp_path / "imp.json")
     assert motore.valori_impostazioni(cfg2)["pulsante_copia"] is False
+
+
+# ---------------------------------------------------------------- "Grazie." inventato da Whisper
+
+def _voce_poi_silenzio():
+    voce = (np.sin(np.arange(FREQ * 2) / 8) * 4000).astype(np.int16)
+    return np.concatenate([np.zeros(FREQ, np.int16), voce, np.zeros(FREQ * 2, np.int16)])
+
+
+def test_taglia_silenzio_prima_e_dopo():
+    audio = _voce_poi_silenzio()  # 1 s silenzio, 2 s voce, 2 s silenzio
+    t = motore.taglia_silenzio(audio, 200)
+    assert 2.0 <= t.size / FREQ <= 2.7
+    assert motore.taglia_silenzio(np.zeros(FREQ, np.int16), 200).size == FREQ  # tutto silenzio: invariato
+
+
+def test_grazie_sul_silenzio_scartato_grazie_vero_tenuto():
+    audio = _voce_poi_silenzio()
+    falso = {"text": " Grazie.", "start": 3.5, "end": 4.5, "no_speech_prob": 0.1}
+    vero = {"text": " Grazie.", "start": 1.5, "end": 2.5, "no_speech_prob": 0.1}
+    incerto = {"text": " Grazie mille!", "start": 1.5, "end": 2.5, "no_speech_prob": 0.8}
+    frase = {"text": " Ci vediamo domani.", "start": 3.5, "end": 4.5, "no_speech_prob": 0.9}
+    assert motore.segmento_inventato(falso, audio, 200)
+    assert not motore.segmento_inventato(vero, audio, 200)
+    assert motore.segmento_inventato(incerto, audio, 200)
+    assert not motore.segmento_inventato(frase, audio, 200)  # solo le chiusure tipiche
+
+
+def test_trascrivi_toglie_il_grazie_finale(monkeypatch):
+    cfg = motore.carica_config()
+    cli = motore.ClientAI(cfg, "gsk_test")
+    inviati = []
+
+    def post(url, timeout, **kw):
+        inviati.append(kw)
+        return RispostaFinta(200, {"text": " Ci vediamo domani. Grazie.", "segments": [
+            {"text": " Ci vediamo domani.", "start": 0.0, "end": 2.0, "no_speech_prob": 0.01},
+            {"text": " Grazie.", "start": 2.2, "end": 2.6, "no_speech_prob": 0.6}]})
+
+    monkeypatch.setattr(cli.s, "post", post)
+    assert cli.trascrivi(_voce_poi_silenzio(), cfg) == "Ci vediamo domani."
+    assert inviati[0]["data"]["response_format"] == "verbose_json"
+
+
+def test_prompt_ricuce_le_frasi_spezzate():
+    cfg = motore.carica_config()
+    for livello in motore.LIVELLI_RISCRITTURA:
+        p = motore.costruisci_prompt(cfg, "normale", livello=livello)
+        assert "discorso fluido" in p and motore._ESEMPI_SPEZZATO[livello] in p
