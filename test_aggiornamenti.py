@@ -379,6 +379,11 @@ def test_bundle_riconosciuto_solo_su_mac(monkeypatch):
     assert aggiorna.bundle_di("/usr/bin/python3") is None
 
 
+# L'"open" finto è uno script con #! : su Windows non si può eseguire, quindi queste prove girano su Linux e Mac.
+SOLO_POSIX = pytest.mark.skipif(sys.platform == "win32", reason="open finto con #!: serve Linux o Mac")
+
+
+@SOLO_POSIX
 def test_mac_installazione_riuscita(tmp_path, monkeypatch):
     app, nuova, vecchia, python = prepara_mac(tmp_path, monkeypatch, PARTE)
     try:
@@ -390,6 +395,7 @@ def test_mac_installazione_riuscita(tmp_path, monkeypatch):
         termina_figli(app)
 
 
+@SOLO_POSIX
 def test_mac_se_non_parte_torna_indietro_e_chiude_la_copia_bloccata(tmp_path, monkeypatch):
     app, nuova, vecchia, python = prepara_mac(tmp_path, monkeypatch, SI_BLOCCA_MAC)
     try:
