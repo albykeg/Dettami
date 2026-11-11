@@ -43,9 +43,12 @@ for f in FINTO.iterdir():
     f.chmod(0o755)
 
 # librerie standard e di terze parti caricate prima di fingere di essere su Mac
-import concurrent.futures, fcntl, hashlib, hmac, http.cookiejar, http.server, logging.handlers, shlex  # noqa: E401,E402
-import socketserver, subprocess, tomllib, urllib.request, wave, webbrowser, zipfile  # noqa: E401,E402
-import requests, PIL.Image, PIL.ImageDraw, PIL.ImageFont  # noqa: E401,E402
+# (import_module invece di "import x": servono solo caricati, e così pyflakes non li segnala come inutili)
+import importlib  # noqa: E402
+for _modulo in ("concurrent.futures", "fcntl", "hashlib", "hmac", "http.cookiejar", "http.server",
+                "logging.handlers", "shlex", "socketserver", "subprocess", "tomllib", "urllib.request", "wave",
+                "webbrowser", "zipfile", "requests", "PIL.Image", "PIL.ImageDraw", "PIL.ImageFont"):
+    importlib.import_module(_modulo)
 sys.platform = "darwin"
 sys.path.insert(0, str(RADICE))
 PRINCIPALE = threading.main_thread()

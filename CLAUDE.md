@@ -64,7 +64,7 @@ Lo stato del lavoro, le cose aperte e la storia delle decisioni sono in **HANDOF
 pip install -r requirements.txt pytest cryptography pyflakes playwright
 python -m playwright install chromium        # solo per prove/prova_dashboard.py
 
-python -m pytest -q                           # 104 test: motore, firma, aggiornatore (anche modalità Mac)
+python -m pytest -q                           # 114 test: motore, firma, aggiornatore (anche modalità Mac), pacchetto
 python -m pyflakes *.py mac/*.py prove/*.py
 python prove/simula_windows.py                # app vera con Windows finto: 47 verifiche
 python prove/prova_dashboard.py               # dashboard in Chromium headless: 33 verifiche
@@ -77,6 +77,10 @@ python costruisci_pacchetto.py                # build in dist/ (scarica in .cach
 python prove/prova_installer_mac.py           # esegue l'installer Mac con comandi finti: 10 verifiche
 python costruisci_pacchetto.py --pubblica     # build + release su GitHub (serve gh con accesso)
 ```
+
+Tutte queste prove (tranne la build e l'installer Mac) girano da sole su GitHub Actions a ogni push e PR
+(`.github/workflows/prove.yml`, Python 3.13 e 3.14, senza segreti). `test_pacchetto.py` costruisce il pacchetto
+di aggiornamento e lo controlla con le regole della 1.3.0 (regola 2 qui sopra).
 
 Le simulazioni in `prove/` sono pensate per Linux o macOS (anche WSL): su Windows `dettami.py` userebbe le API
 vere di Windows. Scrivono i loro file in `prove/_output/`, che è ignorata da git.

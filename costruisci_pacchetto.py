@@ -178,6 +178,29 @@ def note_versione(versione: str) -> list[str]:
     return [r.strip()[2:].strip() for r in m.group(1).splitlines() if r.strip().startswith("- ")]
 
 
+def prepara_app(app: Path, versione: str) -> None:
+    """Scrive in app/ i file dell'app per Windows: gli stessi che finiscono nel pacchetto di aggiornamento."""
+    leggi = lambda p: (QUI / p).read_text(encoding="utf-8")  # noqa: E731
+    # script PowerShell in UTF-8 con BOM (accenti corretti su PowerShell 5.1), CRLF
+    scrivi(app / "disinstalla.ps1", leggi("installer/disinstalla.ps1"), bom=True)
+    scrivi(app / "chiave.ps1", leggi("chiave.ps1"), bom=True)
+    scrivi(app / "requisiti-windows.txt", leggi("installer/requisiti-windows.txt"))
+    scrivi(app / "versione.txt", versione + "\n")
+    for f in FILE_APP:
+        scrivi(app / f, leggi(f), crlf=False)
+    shutil.copy2(QUI / "icona.ico", app / "icona.ico")
+
+
+def scrivi_zip_app(app: Path, zip_app: Path) -> None:
+    """Il pacchetto di aggiornamento: i file di app/ in piano, config.toml come config.esempio.toml."""
+    with zipfile.ZipFile(zip_app, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(app.iterdir()):
+            nome = "config.esempio.toml" if f.name == "config.toml" else f.name
+            info = zipfile.ZipInfo(nome, date_time=(2026, 1, 1, 0, 0, 0))  # zip riproducibile
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, f.read_bytes())
+
+
 def pacchetto_aggiornamento(app: Path, versione: str, runtime: str, chiave: Path,
                             runtime_mac: str | None = None) -> Path | None:
     """Zip dei soli file dell'app + manifest firmati (uno per Windows e, se c'è, uno per Mac)."""
@@ -189,12 +212,7 @@ def pacchetto_aggiornamento(app: Path, versione: str, runtime: str, chiave: Path
         shutil.rmtree(uscita)
     uscita.mkdir(parents=True)
     zip_app = uscita / f"dettami-app-{versione}.zip"
-    with zipfile.ZipFile(zip_app, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in sorted(app.iterdir()):
-            nome = "config.esempio.toml" if f.name == "config.toml" else f.name
-            info = zipfile.ZipInfo(nome, date_time=(2026, 1, 1, 0, 0, 0))  # zip riproducibile
-            info.compress_type = zipfile.ZIP_DEFLATED
-            z.writestr(info, f.read_bytes())
+    scrivi_zip_app(app, zip_app)
     dati = zip_app.read_bytes()
     manifest = {
         "app": "dettami",
@@ -333,13 +351,7 @@ def costruisci(cache: Path, chiave: Path = CHIAVE_PREDEFINITA, da_pubblicare: bo
     scrivi(radice / "Installa.bat", leggi("installer/Installa.bat"))
     scrivi(radice / "LEGGIMI.txt", leggi("installer/LEGGIMI.txt"), bom=True)
     scrivi(radice / "setup" / "installa.ps1", leggi("installer/installa.ps1"), bom=True)
-    scrivi(app / "disinstalla.ps1", leggi("installer/disinstalla.ps1"), bom=True)
-    scrivi(app / "chiave.ps1", leggi("chiave.ps1"), bom=True)
-    scrivi(app / "requisiti-windows.txt", leggi("installer/requisiti-windows.txt"))
-    scrivi(app / "versione.txt", versione + "\n")
-    for f in FILE_APP:
-        scrivi(app / f, leggi(f), crlf=False)
-    shutil.copy2(QUI / "icona.ico", app / "icona.ico")
+    prepara_app(app, versione)
     shutil.copy2(py_zip, runtime / py_zip.name)
     for w in wheels.glob("*.whl"):
         shutil.copy2(w, runtime / "wheels" / w.name)

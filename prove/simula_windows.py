@@ -395,3 +395,4 @@ app._ricarica(app.icon, None)
 verifica("12 ricarica ok", any("ricaricate" in n for n in NOTIFICHE))
 
 print(f"\n{sum(c for _, c in risultati)}/{len(risultati)} verifiche superate")
+sys.exit(0 if all(c for _, c in risultati) else 1)  # codice d'uscita per la CI
