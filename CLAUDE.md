@@ -70,6 +70,7 @@ python prove/simula_windows.py                # app vera con Windows finto: 47 v
 python prove/prova_dashboard.py               # dashboard in Chromium headless: 33 verifiche
 python prove/simula_mac.py base               # app vera "su Mac" con librerie Apple finte: 33 verifiche
 python prove/simula_mac.py permessi           # flusso dei permessi di macOS: 13 verifiche
+GROQ_API_KEY=... python prove/confronta_riscrittura.py  # confronto affiancato fedele/chiara/ottimizzata (rete vera; --finto senza)
 python prove/controlla_ps1.py installer/installa.ps1 installer/disinstalla.ps1 chiave.ps1
 shellcheck -s bash -S warning mac/*.command   # se disponibile
 
