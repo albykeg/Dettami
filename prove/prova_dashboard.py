@@ -276,3 +276,4 @@ with sync_playwright() as p:
 
 srv.chiudi()
 print(f"\n{sum(esiti)}/{len(esiti)} verifiche superate")
+sys.exit(0 if all(esiti) else 1)  # codice d'uscita per la CI

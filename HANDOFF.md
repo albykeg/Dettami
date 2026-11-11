@@ -15,9 +15,10 @@ Le regole di lavoro e i comandi sono in `CLAUDE.md`.
 | Mac | Lo zip `Dettami-Mac-1.4.0.zip` è stato consegnato ad Alberto l'8/11. La guida per l'amico è un documento Claude ("Dettami sul Mac: istruzioni facili", https://claude.ai/artifact/LqQ9QGvMrt8CG9p9aRP7in), privato finché Alberto non lo condivide. **Esito della prova: non ancora arrivato** |
 | Chiave di firma | Pubblica in `aggiornamenti.py`. La privata ce l'ha solo Alberto (file `chiave-firma-dettatura-PRIVATA.json` che gli è stato consegnato). Non è nel repository |
 
-Prove che passano su `main` (Linux): `pytest` 104, `prove/simula_windows.py` 47/47, `prove/prova_dashboard.py` 33/33,
+Prove che passano su `main` (Linux): `pytest` 114 (con `test_pacchetto.py`), `prove/simula_windows.py` 47/47, `prove/prova_dashboard.py` 33/33,
 `prove/simula_mac.py base` 33/33, `prove/simula_mac.py permessi` 13/13, `prove/prova_installer_mac.py` 10/10,
-`controlla_ps1.py` ok su tutti gli script, shellcheck senza avvisi, pyflakes pulito.
+`controlla_ps1.py` ok su tutti gli script, shellcheck senza avvisi, pyflakes pulito. Tutte (tranne
+`prova_installer_mac.py`, che vuole la build) girano su GitHub Actions a ogni push e PR (`.github/workflows/prove.yml`).
 
 ## Primo avvio
 
@@ -72,7 +73,6 @@ non va caricata lì: la build firmata e la release si fanno dal PC di Alberto.
 Idee da proporre più avanti:
 - Mac nativo per i chip Apple (Python standalone `aarch64-apple-darwin`; su arm64 serve almeno la firma ad-hoc,
   che si fa gratis sul Mac con `codesign -s -`);
-- test automatici su GitHub Actions (non servono segreti);
 - argomenti del repository su GitHub, da impostare a mano: `speech-to-text`, `dictation`, `whisper`, `groq`,
   `windows`, `italiano`.
 
