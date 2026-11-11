@@ -279,6 +279,34 @@ def c_e_voce(audio: np.ndarray, soglia: float, freq: int = FREQ) -> bool:
     return int((rms >= soglia).sum()) >= 5
 
 
+def _rms_finestre(audio: np.ndarray, freq: int = FREQ) -> np.ndarray:
+    n = int(freq * 0.03)  # finestre da 30 ms
+    m = audio.size // n
+    if m == 0:
+        return np.zeros(0, np.float32)
+    fr = audio[: m * n].astype(np.float32).reshape(m, n)
+    return np.sqrt((fr ** 2).mean(axis=1))
+
+
+def taglia_silenzio(audio: np.ndarray, soglia: float, freq: int = FREQ, margine: float = 0.3) -> np.ndarray:
+    """Toglie il silenzio prima e dopo la voce, lasciando un margine. Whisper sul silenzio finale
+    tende a "inventare" frasi come "Grazie." o "Grazie a tutti.": meno silenzio, meno invenzioni."""
+    rms = _rms_finestre(audio, freq)
+    sopra = np.flatnonzero(rms >= soglia)
+    if sopra.size == 0:
+        return audio
+    n = int(freq * 0.03)
+    inizio = max(0, sopra[0] * n - int(freq * margine))
+    fine = min(audio.size, (sopra[-1] + 1) * n + int(freq * margine))
+    return audio[inizio:fine]
+
+
+def voce_nel_tratto(audio: np.ndarray, soglia: float, da: float, a: float, freq: int = FREQ) -> float:
+    """Secondi di voce (sopra la soglia) tra `da` e `a` secondi."""
+    pezzo = audio[max(0, int(da * freq)) : max(0, int(a * freq))]
+    return float((_rms_finestre(pezzo, freq) >= soglia).sum()) * 0.03
+
+
 def livello(audio: np.ndarray, freq: int = FREQ) -> float:
     """Volume massimo (RMS su 30 ms), utile per tarare la soglia."""
     n = int(freq * 0.03)
@@ -308,6 +336,35 @@ ALLUCINAZIONI_SE_UNICHE = [
     "Thanks for watching",
     "Sottotitoli",
 ]
+
+# Brevi chiusure che Whisper aggiunge spesso alla fine (o nelle pause) anche se nessuno le ha dette.
+# Si scartano solo se in quel tratto di audio non c'è davvero voce, o se Whisper stesso dice
+# che probabilmente lì non si parlava: un "grazie" detto davvero resta.
+CHIUSURE_SOSPETTE = {
+    "grazie", "grazie mille", "grazie a tutti", "grazie a voi", "grazie per l'attenzione",
+    "grazie per la visione", "grazie a tutti per la visione", "buona visione", "ciao", "ciao a tutti",
+    "alla prossima", "arrivederci", "sottotitoli", "thank you", "thanks", "thank you for watching",
+    "thanks for watching", "bye",
+}
+
+
+def _nudo(testo: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[.,;:!?…\-–—\"“”«»]", " ", testo or "")).strip().lower().replace("’", "'")
+
+
+def segmento_inventato(seg: dict, audio: np.ndarray, soglia: float, freq: int = FREQ) -> bool:
+    """True se un segmento di Whisper è una chiusura tipica ("Grazie.") senza voce vera sotto."""
+    if _nudo(seg.get("text", "")) not in CHIUSURE_SOSPETTE:
+        return False
+    try:
+        if float(seg.get("no_speech_prob") or 0) >= 0.5:
+            return True
+        da, a = float(seg["start"]), float(seg["end"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    # meno di 0,15 s di voce nel tratto: lì non ha parlato nessuno
+    return voce_nel_tratto(audio, soglia, da, a, freq) < 0.15
+
 
 _SOLO_PUNTEGGIATURA = re.compile(r"[\s.,;:!?…\-–—'\"]*")
 
@@ -384,17 +441,18 @@ REGOLE FISSE
 2. Elimina intercalari e riempitivi (ehm, uhm, allora, cioè, tipo, praticamente, diciamo, insomma, "no?" a fine frase), ripetizioni e false partenze.
 3. Autocorrezioni: se l'utente si corregge ("alle 5, anzi no, alle 6", "martedì... no, mercoledì"), tieni solo la versione finale.
 4. Correggi le parole che la trascrizione ha chiaramente capito male, quando il contesto rende ovvia quella giusta.
-5. Sistema punteggiatura, maiuscole, accenti e apostrofi. Se il testo è lungo e cambia argomento, dividilo in paragrafi.
-6. Se l'utente elenca più cose (primo, secondo, poi, inoltre...), usa un elenco puntato o numerato.
-7. Scrivi in forma scritta numeri, date, orari, importi, email e link (es. "15:30", "250 €", "mario.rossi@gmail.com", "www.sito.it").
-8. Comandi vocali: "a capo" → nuova riga; "nuovo paragrafo" → riga vuota; "punto", "virgola", "due punti", "punto interrogativo", "punto esclamativo", "apri/chiudi parentesi", "tra virgolette" detti come comandi → il simbolo corrispondente.
-9. Non inventare nulla: niente informazioni, saluti, firme, spiegazioni o commenti che l'utente non ha detto. Conserva tutti i fatti: nomi, numeri, date, condizioni, dubbi e richieste.
-10. Mantieni la lingua in cui l'utente ha parlato (compresi i termini in inglese che usa), la persona (io/noi), il tu o il lei, e il tono.
-11. Rispondi SOLO con il testo finale: niente virgolette, tag, prefissi o note."""
+5. La punteggiatura della trascrizione non è affidabile: mette un punto a ogni pausa e spezza le frasi a metà. Ignorala e ricostruisci il discorso: unisci i pezzi che appartengono alla stessa frase e collega i pensieri dello stesso ragionamento con la punteggiatura giusta (virgole, due punti, punto e virgola) e, quando il legame è evidente, con i connettivi adatti (perché, quindi, però, invece, così). Il risultato deve leggersi come un discorso fluido, non come un elenco di frasi staccate.
+6. Sistema maiuscole, accenti e apostrofi. Impagina il testo: se è lungo o cambia argomento, dividilo in paragrafi brevi, uno per idea.
+7. Se l'utente elenca più cose (primo, secondo, poi, inoltre...), usa un elenco puntato o numerato.
+8. Scrivi in forma scritta numeri, date, orari, importi, email e link (es. "15:30", "250 €", "mario.rossi@gmail.com", "www.sito.it").
+9. Comandi vocali: "a capo" → nuova riga; "nuovo paragrafo" → riga vuota; "punto", "virgola", "due punti", "punto interrogativo", "punto esclamativo", "apri/chiudi parentesi", "tra virgolette" detti come comandi → il simbolo corrispondente.
+10. Non inventare nulla: niente informazioni, saluti, firme, spiegazioni o commenti che l'utente non ha detto. Conserva tutti i fatti: nomi, numeri, date, condizioni, dubbi e richieste.
+11. Mantieni la lingua in cui l'utente ha parlato (compresi i termini in inglese che usa), la persona (io/noi), il tu o il lei, e il tono.
+12. Rispondi SOLO con il testo finale: niente virgolette, tag, prefissi o note."""
 
 ISTRUZIONI_LIVELLO = {
     "fedele": """QUANTO RISCRIVERE: FEDELE
-Lascia le frasi come le ha dette l'utente: struttura, ordine e parole restano le sue. Applica solo le regole fisse.""",
+Lascia le frasi come le ha dette l'utente: struttura, ordine e parole restano le sue. Applica solo le regole fisse, compresa la ricostruzione delle frasi spezzate dalle pause.""",
     "chiara": """QUANTO RISCRIVERE: CHIARO
 Oltre alle regole fisse, rendi chiaro il testo:
 - Se una frase è contorta, sospesa o si capisce a fatica, riformulala in modo semplice e diretto, usando il più possibile le parole dell'utente.
@@ -434,12 +492,25 @@ _ESEMPI_EXTRA = {
                      "fattura va mandata entro venerdì e l'importo lo prendo dal gestionale anzi no dal foglio Excel",
                      "Entro venerdì devo mandare la fattura a Rossi, dopo aver controllato l'importo sul foglio Excel.")],
 }
+# Frasi spezzate dalle pause: Whisper mette un punto a ogni respiro, il testo va ricucito.
+_SPEZZATO_DETTO = ("Domani non riesco. A venire in ufficio. Perché ho il tecnico. Della caldaia. Che viene la mattina. "
+                   "Quindi lavoro da casa. E nel pomeriggio. Se serve passo.")
+_ESEMPI_SPEZZATO = {
+    "fedele": "Domani non riesco a venire in ufficio, perché ho il tecnico della caldaia che viene la mattina, "
+              "quindi lavoro da casa. E nel pomeriggio, se serve, passo.",
+    "chiara": "Domani non riesco a venire in ufficio perché la mattina viene il tecnico della caldaia, "
+              "quindi lavoro da casa. Se serve, nel pomeriggio passo.",
+    "ottimizzata": "Domani non riesco a venire in ufficio: la mattina viene il tecnico della caldaia, quindi "
+                   "lavoro da casa. Se serve, passo nel pomeriggio.",
+}
 _ESEMPIO_DOMANDA = ("ehm puoi scrivermi una mail per il cliente che dice che siamo in ritardo con la consegna",
                     "Puoi scrivermi una mail per il cliente che dice che siamo in ritardo con la consegna?")
 
 
 def _blocco_esempi(livello: str) -> str:
-    coppie = [(ESEMPIO_DETTO, ESEMPI_LIVELLO[livello]), *_ESEMPI_EXTRA.get(livello, []), _ESEMPIO_DOMANDA]
+    coppie = [(ESEMPIO_DETTO, ESEMPI_LIVELLO[livello]), *_ESEMPI_EXTRA.get(livello, []),
+              (_SPEZZATO_DETTO, _ESEMPI_SPEZZATO[livello]),
+              _ESEMPIO_DOMANDA]
     righe = ["ESEMPI (servono solo a mostrare il livello di riscrittura: non riusarne il contenuto)"]
     for detto, scritto in coppie:
         righe.append(f"Detto: {detto}\nScritto: {scritto}")
@@ -656,6 +727,8 @@ class ClientAI:
         c = cfg["trascrizione"]
         modelli = c.get("modelli") or [c.get("modello", "whisper-large-v3-turbo")]
         prompt = prompt_whisper(cfg)
+        soglia = float(cfg.get("audio", {}).get("soglia_silenzio", 200))
+        audio = taglia_silenzio(audio, soglia)
         passo = 600 * FREQ  # pezzi da 10 minuti, ben sotto il limite di dimensione file
         testi = []
         for i in range(0, max(audio.size, 1), passo):
@@ -665,7 +738,7 @@ class ClientAI:
             wav = in_wav(pezzo)
 
             def chiamata(modello: str) -> str:
-                dati = {"model": modello, "response_format": "json", "temperature": "0"}
+                dati = {"model": modello, "response_format": "verbose_json", "temperature": "0"}
                 if c.get("lingua") and c["lingua"] != "auto":
                     dati["language"] = c["lingua"]
                 if prompt:
@@ -674,6 +747,12 @@ class ClientAI:
                                files={"file": ("audio.wav", wav, "audio/wav")}, data=dati)
                 if self.uso:
                     self.uso.registra(modello, secondi_audio=max(10.0, pezzo.size / FREQ))
+                segmenti = j.get("segments")
+                if isinstance(segmenti, list) and segmenti and all(isinstance(x, dict) for x in segmenti):
+                    buoni = [x for x in segmenti if not segmento_inventato(x, pezzo, soglia)]
+                    if len(buoni) < len(segmenti):
+                        log.info("Scartati %d segmenti inventati da Whisper", len(segmenti) - len(buoni))
+                        return " ".join((x.get("text") or "").strip() for x in buoni).strip()
                 return (j.get("text") or "").strip()
 
             self.ultimo_modello_trascrizione, testo = self._con_riserva(modelli, chiamata)

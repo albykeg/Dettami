@@ -2,6 +2,7 @@
 
 ## 1.4.0
 
+- Niente più "Grazie." aggiunti da soli alla fine della dettatura e testo più fluido: le frasi spezzate dalle pause vengono ricucite in un discorso unico, con punteggiatura e paragrafi giusti.
 - Dettami arriva su Mac (beta, Mac con processore Intel): stessa dettatura, riscrittura e dashboard, con Option destro come tasto e l'icona nella barra dei menu.
 - Su Mac l'installer non chiede la password, la pillola funziona anche sulle app a tutto schermo e gli aggiornamenti arrivano da soli come su Windows.
 - La dashboard mostra il nome del tasto giusto per il tuo computer.
