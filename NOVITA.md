@@ -1,5 +1,11 @@
 # Novità di Dettami
 
+## 1.4.1
+
+- Riscrittura più intelligente: se dici "scrivi che…" o "voglio scrivere un messaggio a…", Dettami toglie queste frasi e scrive tutto il messaggio, senza perderne pezzi.
+- Capisce meglio le parole storpiate dalla trascrizione e non lascia più frasi sconnesse.
+- Se la riscrittura dovesse tagliare gran parte di un dettato lungo, Dettami inserisce il testo completo invece di un messaggio a metà.
+
 ## 1.4.0
 
 - Niente più "Grazie." aggiunti da soli alla fine della dettatura e testo più fluido: le frasi spezzate dalle pause vengono ricucite in un discorso unico, con punteggiatura e paragrafi giusti.

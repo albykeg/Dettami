@@ -756,3 +756,46 @@ def test_prompt_ricuce_le_frasi_spezzate():
     for livello in motore.LIVELLI_RISCRITTURA:
         p = motore.costruisci_prompt(cfg, "normale", livello=livello)
         assert "discorso fluido" in p and motore._ESEMPI_SPEZZATO[livello] in p
+
+
+# ---------------------------------------------------------------- istruzioni a Dettami e senso
+
+def test_prompt_distingue_istruzioni_a_dettami_dal_contenuto():
+    cfg = motore.carica_config()
+    for livello in motore.LIVELLI_RISCRITTURA:
+        p = motore.costruisci_prompt(cfg, "chat", livello=livello)
+        assert "Istruzioni a Dettami" in p and "Non perdere mai contenuto" in p
+        for detto, scritto in motore._ESEMPI_ISTRUZIONI:
+            assert detto in p and scritto in p
+            assert "scrivi" not in scritto.lower() and "messaggio" not in scritto.lower()
+        # la richiesta a un assistente AI invece resta nel testo
+        assert motore._ESEMPIO_DOMANDA[1] in p
+        # la seconda parte annunciata ("e poi scrivi anche che...") non va persa
+        assert "Ti chiamo domani mattina" in motore._ESEMPI_ISTRUZIONI[0][1]
+
+
+def test_prompt_ricostruisce_il_senso_delle_parole_storpiate():
+    cfg = motore.carica_config()
+    for livello in motore.LIVELLI_RISCRITTURA:
+        p = motore.costruisci_prompt(cfg, "email", livello=livello)
+        assert "Ricostruisci il senso" in p and "frasi sconnesse" in p
+        detto, scritto = motore._ESEMPIO_STORPIATO
+        assert detto in p and scritto in p and "consegnato" in scritto and "a vete" not in scritto
+
+
+def test_riscrittura_che_perde_contenuto_viene_scartata():
+    cfg = motore.carica_config()
+    lungo = ("scrivi a Luca che domani la consegna slitta perché il fornitore non ha mandato i pezzi, "
+             "che il nuovo giorno è giovedì mattina, che il prezzo resta quello concordato e che se ha "
+             "domande mi può chiamare in ufficio dopo le tre del pomeriggio")
+    testo, avviso = motore.riscrivi(ClientFinto(risposta="Ti chiamo dopo le tre."), cfg, lungo)
+    assert testo == lungo and "tolto troppo" in avviso
+    # togliere solo l'istruzione accorcia ma va bene
+    buono = ("La consegna di domani slitta perché il fornitore non ha mandato i pezzi: il nuovo giorno è "
+             "giovedì mattina e il prezzo resta quello concordato. Se hai domande, chiamami in ufficio dopo le 15.")
+    assert motore.riscrivi(ClientFinto(risposta=buono), cfg, lungo) == (buono, None)
+    # nei dettati brevi il controllo non scatta
+    corto = "voglio scrivere un messaggio a Marco per dirgli ok"
+    assert motore.riscrivi(ClientFinto(risposta="Ok"), cfg, corto) == ("Ok", None)
+    # nelle traduzioni neanche (il cinese, per esempio, usa molti meno caratteri)
+    assert motore.riscrivi(ClientFinto(risposta="明天见"), cfg, lungo, traduci=True, lingua="cinese") == ("明天见", None)
