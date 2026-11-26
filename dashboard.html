@@ -336,7 +336,7 @@ select, input[type="text"] { padding: 7px 10px; border: 1px solid var(--filo); b
     <!-- ================= Dizionario ================= -->
     <section id="v-dizionario" hidden>
       <h1>Dizionario</h1>
-      <p class="sotto">Nomi e parole che Dettami deve scrivere sempre nello stesso modo: persone, clienti, aziende, prodotti, sigle.</p>
+      <p class="sotto">Nomi e parole che Dettami deve scrivere sempre nello stesso modo: persone, clienti, aziende, prodotti, sigle. Se una parola viene capita male (per esempio "Daytime" invece di "Dettami"), aggiungi qui quella giusta: serve sia per ascoltare meglio sia per correggere.</p>
       <form class="aggiungi" id="formParola">
         <input type="text" id="nuovaParola" placeholder="Es. Mario Rossi, Acme S.r.l., PowerPoint" aria-label="Nuova parola" maxlength="80">
         <button class="pulsante primario" type="submit">Aggiungi</button>
@@ -367,6 +367,7 @@ select, input[type="text"] { padding: 7px 10px; border: 1px solid var(--filo); b
       <fieldset class="gruppo">
         <legend>Lingua</legend>
         <div class="campo"><label for="i-lingua">Lingua in cui parli</label><select id="i-lingua" data-imp="lingua"></select></div>
+        <div class="campo"><label for="i-precisa">Riconoscimento più preciso<small>Usa il modello che sbaglia meno parole. Spegnilo solo se vuoi il testo qualche decimo di secondo prima.</small></label><input type="checkbox" class="interruttore" role="switch" id="i-precisa" data-imp="trascrizione_precisa"></div>
         <div class="campo"><label for="i-trad">Traduci in<small>Tieni premuto Shift mentre detti e il testo viene scritto tradotto.</small></label><select id="i-trad" data-imp="lingua_traduzione"></select></div>
       </fieldset>
 

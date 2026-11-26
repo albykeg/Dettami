@@ -1,5 +1,12 @@
 # Novità di Dettami
 
+## 1.4.1
+
+- La riscrittura non taglia più parti di quello che dici, e le istruzioni che detti per qualcun altro (per esempio un messaggio per Claude o per un cliente) restano nel testo invece di essere eseguite o tolte.
+- Se una riscrittura perde troppe parole, Dettami la rifà da sola in modo più fedele.
+- Riconoscimento vocale più preciso: usa per primo il modello Whisper che sbaglia meno parole (si può spegnere nelle Impostazioni) e alza il volume quando il microfono ti sente poco.
+- Le parole del Dizionario vengono corrette anche quando sono capite male nel suono, per esempio "Daytime" diventa "Dettami".
+
 ## 1.4.0
 
 - Niente più "Grazie." aggiunti da soli alla fine della dettatura e testo più fluido: le frasi spezzate dalle pause vengono ricucite in un discorso unico, con punteggiatura e paragrafi giusti.
