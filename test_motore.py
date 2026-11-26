@@ -297,7 +297,7 @@ def test_client_parametri_e_fallback_modelli(monkeypatch):
     audio = (np.sin(np.arange(FREQ * 2) / 8) * 4000).astype(np.int16)
     assert cli.trascrivi(audio, cfg) == "ciao mondo"
     url, kw = inviati[0]
-    assert kw["data"]["language"] == "it" and kw["data"]["model"] == "whisper-large-v3-turbo"
+    assert kw["data"]["language"] == "it" and kw["data"]["model"] == "whisper-large-v3"  # "precisa" predefinita
     assert "Glossario" in kw["data"]["prompt"]
     assert kw["files"]["file"][0] == "audio.wav"
 
@@ -387,6 +387,7 @@ def test_qwen_senza_ragionamento(monkeypatch):
 
 def test_trascrizione_passa_al_secondo_whisper_quando_finisce_la_quota(monkeypatch):
     cfg = motore.carica_config()
+    cfg["trascrizione"]["precisa"] = False  # ordine del config: prima il turbo
     cli = motore.ClientAI(cfg, "k")
     usati = []
 
@@ -756,3 +757,81 @@ def test_prompt_ricuce_le_frasi_spezzate():
     for livello in motore.LIVELLI_RISCRITTURA:
         p = motore.costruisci_prompt(cfg, "normale", livello=livello)
         assert "discorso fluido" in p and motore._ESEMPI_SPEZZATO[livello] in p
+
+
+# ---------------------------------------------------------------- niente tagli, istruzioni al destinatario, ascolto
+
+def test_prompt_non_taglia_e_non_esegue_istruzioni_per_il_destinatario():
+    cfg = motore.carica_config()
+    for livello in motore.LIVELLI_RISCRITTURA:
+        p = motore.costruisci_prompt(cfg, "prompt", livello=livello)
+        assert "non sei mai il destinatario" in p and "Non tagliare contenuto" in p
+        assert motore._ESEMPI_ISTRUZIONI[livello] in p and motore._ISTRUZIONI_DETTO in p
+        assert "simili nel suono" in p  # parole capite male dal riconoscimento vocale
+
+
+class _ClientPerLivello(ClientFinto):
+    def __init__(self, risposte):
+        super().__init__()
+        self.risposte = risposte
+
+    def rifinisci(self, sistema, grezzo, cfg, livello="chiara"):
+        super().rifinisci(sistema, grezzo, cfg, livello)
+        r = self.risposte[livello]
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+
+DETTO_LUNGO = ("allora volevo dirti che domani passo in ufficio verso le dieci per firmare il contratto "
+               "e poi ti porto anche i documenti della moto che mi avevi chiesto la settimana scorsa "
+               "e se riesci prepara anche la fattura capito")
+
+
+def test_riscrittura_troppo_corta_si_riprova_con_fedele():
+    cfg = motore.carica_config()
+    completo = ("Domani passo in ufficio verso le dieci per firmare il contratto e ti porto anche i documenti "
+                "della moto che mi avevi chiesto la settimana scorsa. Se riesci, prepara anche la fattura.")
+    c = _ClientPerLivello({"chiara": "Domani passo in ufficio.", "fedele": completo})
+    assert motore.riscrivi(c, cfg, DETTO_LUNGO) == (completo, None)
+    assert c.livelli == ["chiara", "fedele"] and "FEDELE" in c.chiamate_ai[-1][0]
+
+
+def test_riscrittura_completa_non_si_riprova():
+    cfg = motore.carica_config()
+    buono = ("Domani passo in ufficio verso le dieci per firmare il contratto e ti porto i documenti della "
+             "moto che mi avevi chiesto. Se riesci, prepara anche la fattura.")
+    c = _ClientPerLivello({"chiara": buono})
+    assert motore.riscrivi(c, cfg, DETTO_LUNGO) == (buono, None) and c.livelli == ["chiara"]
+    assert not motore.troppo_corto("Ok.", "frase breve detta a voce")  # i testi brevi non si controllano
+
+
+def test_riprova_fallita_tiene_la_prima_riscrittura():
+    cfg = motore.carica_config()
+    c = _ClientPerLivello({"chiara": "Domani passo in ufficio.", "fedele": motore.ErroreAPI("quota", stato=429)})
+    assert motore.riscrivi(c, cfg, DETTO_LUNGO) == ("Domani passo in ufficio.", None)
+    c = _ClientPerLivello({"chiara": "Domani passo.", "fedele": motore.ErroreAPI("chiave", stato=401)})
+    with pytest.raises(motore.ErroreAPI):
+        motore.riscrivi(c, cfg, DETTO_LUNGO)
+
+
+def test_modelli_trascrizione_precisa():
+    cfg = motore.carica_config()
+    assert motore.modelli_trascrizione(cfg) == ["whisper-large-v3", "whisper-large-v3-turbo"]
+    cfg["trascrizione"]["precisa"] = False
+    assert motore.modelli_trascrizione(cfg) == ["whisper-large-v3-turbo", "whisper-large-v3"]
+    cfg["trascrizione"].update(precisa=True, modelli=["whisper-large-v3-turbo"])
+    assert motore.modelli_trascrizione(cfg) == ["whisper-large-v3-turbo"]
+    assert motore.valida_impostazioni({"trascrizione_precisa": False}, cfg) == {"trascrizione": {"precisa": False}}
+
+
+def test_normalizza_volume_alza_le_voci_basse_e_non_abbassa():
+    bassa = (np.sin(np.arange(FREQ) / 8) * 3000 + 300).astype(np.int16)
+    alzata = motore.normalizza_volume(bassa)
+    assert alzata.dtype == np.int16 and 12000 < np.abs(alzata).max() <= 32767
+    assert abs(float(alzata.mean())) < 50  # niente spostamento dallo zero
+    forte = (np.sin(np.arange(FREQ) / 8) * 30000).astype(np.int16)
+    assert np.abs(motore.normalizza_volume(forte)).max() >= 29000
+    rumore = (np.random.default_rng(0).normal(0, 20, FREQ)).astype(np.int16)
+    assert np.abs(motore.normalizza_volume(rumore)).max() <= np.abs(rumore).max() * 8 + 50  # guadagno limitato
+    assert motore.normalizza_volume(np.zeros(0, np.int16)).size == 0
